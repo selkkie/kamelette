@@ -1,11 +1,11 @@
 @font-face {
     font-family: naomi;
-    src: url('font/naomi.ttf');
+    src: url('../kamelette/font/naomi.ttf');
 }
 
 @font-face {
     font-family: crayons;
-    src: url('font/CFCrayons-Regular.ttf');
+    src: url('../kamelette/font/CFCrayons-Regular.ttf');
 }
 
 .crayon {
