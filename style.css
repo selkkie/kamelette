@@ -1,0 +1,365 @@
+@font-face {
+    font-family: naomi;
+    src: url('font/naomi.ttf');
+}
+
+@font-face {
+    font-family: crayons;
+    src: url('font/CFCrayons-Regular.ttf');
+}
+
+.crayon {
+    font-family: crayons;
+}
+
+body {
+    background-color: black;
+    color: #888;
+    font-family: naomi;
+}
+
+.row {
+    width: 100vw;
+    text-align: center;
+    margin: 10px 0 10px 0;
+}
+
+h1 {
+    font-family: crayons;
+    font-size: 7em;
+    margin: 35px 0 -10px 0;
+}
+
+.blot {
+    height: 50px;
+    clip-path: circle(20px at center);
+}
+
+#canvas {
+    width: 100vw;
+    text-align: center;
+}
+
+.btn {
+    border-width: 0;
+    font-family: naomi;
+    font-size: 3em;
+    margin: 10px;
+    padding: 0 15px 5px 15px;
+    background-color: #333;
+    color: #CCC;
+    height: 100%;
+}
+
+.fabtn {
+    background-color: transparent;
+    font-size: 2em;
+    height: 100%;
+    padding: 10px 0 10px 0;
+}
+
+.slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 1px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+#nocol {
+    color: #888;
+    width: 40px;
+    font-size: 1em;
+    font-family: crayon;
+    padding: 10px;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    background: #ddd;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    background: #ddd;
+    cursor: pointer;
+}
+
+.disabled {
+    color: #333;
+}
+
+.disabled:hover {
+    background-color: transparent;
+    color: #333;
+}
+
+.btn:hover {
+    background-color: #444;
+    color: #000;
+}
+
+input {
+    /*
+    font-size: 3em;
+    font-family: naomi;
+    font-weight: 700;
+*/
+    color: white;
+    background-color: #222;
+    border-width: 0;
+}
+
+.rainbow-bg:hover {
+    animation: rainbow-bg 2.5s linear;
+    animation-iteration-count: infinite;
+}
+
+.flexrow {
+    display: flex;
+    justify-content: center;
+}
+
+.flexme {
+    margin: 0 20px 0 20px;
+    font-size: 2em;
+}
+
+.rainbow {
+    animation: rainbow 2.5s linear;
+    animation-iteration-count: infinite;
+}
+
+@keyframes rainbow-bg {
+
+    100%,
+    0% {
+        background-color: rgb(255, 0, 0);
+    }
+
+    8% {
+        background-color: rgb(255, 127, 0);
+    }
+
+    16% {
+        background-color: rgb(255, 255, 0);
+    }
+
+    25% {
+        background-color: rgb(127, 255, 0);
+    }
+
+    33% {
+        background-color: rgb(0, 255, 0);
+    }
+
+    41% {
+        background-color: rgb(0, 255, 127);
+    }
+
+    50% {
+        background-color: rgb(0, 255, 255);
+    }
+
+    58% {
+        background-color: rgb(0, 127, 255);
+    }
+
+    66% {
+        background-color: rgb(0, 0, 255);
+    }
+
+    75% {
+        background-color: rgb(127, 0, 255);
+    }
+
+    83% {
+        background-color: rgb(255, 0, 255);
+    }
+
+    91% {
+        background-color: rgb(255, 0, 127);
+    }
+}
+
+@keyframes rainbow {
+
+    100%,
+    0% {
+        color: rgb(255, 0, 0);
+    }
+
+    8% {
+        color: rgb(255, 127, 0);
+    }
+
+    16% {
+        color: rgb(255, 255, 0);
+    }
+
+    25% {
+        color: rgb(127, 255, 0);
+    }
+
+    33% {
+        color: rgb(0, 255, 0);
+    }
+
+    41% {
+        color: rgb(0, 255, 127);
+    }
+
+    50% {
+        color: rgb(0, 255, 255);
+    }
+
+    58% {
+        color: rgb(0, 127, 255);
+    }
+
+    66% {
+        color: rgb(0, 0, 255);
+    }
+
+    75% {
+        color: rgb(127, 0, 255);
+    }
+
+    83% {
+        color: rgb(255, 0, 255);
+    }
+
+    91% {
+        color: rgb(255, 0, 127);
+    }
+}
+
+/*
+
+.inputfile {
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    position: absolute;
+    z-index: -1;
+}
+
+.inputfile + label {
+    font-size: 3em;
+    font-family: naomi;
+    font-weight: 700;
+    color: white;
+    background-color: #222;
+    display: inline-block;
+    padding: 0 20px 0 20px;
+}
+
+.inputfile:focus + label,
+.inputfile + label:hover {
+    background-color: #555;
+    cursor: pointer;
+    "hand"cursor
+}
+*/
+@font-face {
+    font-family: 'fontello';
+    src: url('font/fontello.eot?79625409');
+    src: url('font/fontello.eot?79625409#iefix') format('embedded-opentype'),
+        url('font/fontello.woff2?79625409') format('woff2'),
+        url('font/fontello.woff?79625409') format('woff'),
+        url('font/fontello.ttf?79625409') format('truetype'),
+        url('font/fontello.svg?79625409#fontello') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Chrome hack: SVG is rendered more smooth in Windozze. 100% magic, uncomment if you need it. */
+/* Note, that will break hinting! In other OS-es font will be not as sharp as it could be */
+/*
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  @font-face {
+    font-family: 'fontello';
+    src: url('../font/fontello.svg?79625409#fontello') format('svg');
+  }
+}
+*/
+
+[class^="icon-"]:before,
+[class*=" icon-"]:before {
+    font-family: "fontello";
+    font-style: normal;
+    font-weight: normal;
+    speak: never;
+
+    display: inline-block;
+    text-decoration: inherit;
+    width: 1em;
+    margin-right: .2em;
+    text-align: center;
+    /* opacity: .8; */
+
+    /* For safety - reset parent styles, that can break glyph codes*/
+    font-variant: normal;
+    text-transform: none;
+
+    /* fix buttons height, for twitter bootstrap */
+    line-height: 1em;
+
+    /* Animation center compensation - margins should be symmetric */
+    /* remove if not needed */
+    margin-left: .2em;
+
+    /* you can be more comfortable with increased icons size */
+    /* font-size: 120%; */
+
+    /* Font smoothing. That was taken from TWBS */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Uncomment for 3D effect */
+    /* text-shadow: 1px 1px 1px rgba(127, 127, 127, 0.3); */
+}
+
+.icon-fast-backward:before {
+    content: '\e800';
+}
+
+/* '' */
+.icon-undo:before {
+    content: '\e801';
+}
+
+/* '' */
+.icon-arrows-cw:before {
+    content: '\e802';
+}
+
+/* '' */
+.icon-ccw-1:before {
+    content: '\e803';
+}
+
+/* '' */
+.icon-cw:before {
+    content: '\e804';
+}
+
+/* '' */
+.icon-ccw:before {
+    content: '\f025';
+}
+
+/* '' */
