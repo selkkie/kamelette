@@ -9,6 +9,7 @@ If you want to modify, you'll need [browserify](https://github.com/browserify/br
 
 ## To Do
 * Fix color cycler
+* Manual color replacement
 * Support other schemes, replace faulty palette size input
 * Lock colors in place
 * Use locked colors as starter color(s)? - PleaseJS takes only one input...
