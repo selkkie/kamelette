@@ -1,6 +1,6 @@
 # Kamelette
 
-Kamelette is a tool for quickly testing out random color palettes on an image. It's powered by [PleaseJS](https://github.com/Fooidge/PleaseJS).
+Kamelette is a tool for quickly testing out random color palettes on an image. It's powered by [PleaseJS](https://github.com/Fooidge/PleaseJS) and [PixiJS's](https://github.com/pixijs/pixi.js) [Multi Color Replace filter](https://github.com/pixijs/pixi-filters/tree/master/filters/multi-color-replace).
 
 Play with it [here](https://selkkie.github.io/kamelette/)!
 
