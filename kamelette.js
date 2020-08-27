@@ -3,7 +3,10 @@ const PIXI = require('pixi.js');
 const PF = require('pixi-filters');
 const getColors = require('get-image-colors');
 
+const Please = require('pleasejs');
+
 var originalColors = [];
+var currentPalette = [];
 
 const sauce = './marilyn.jpg';
 
@@ -67,14 +70,17 @@ const sauce = './marilyn.jpg';
 
     function resetpalette(urlof) {
         originalColors = [];
-        var paletteSize = document.getElementById("nocol").value;
+        // var paletteSize = document.getElementById("nocol").value;
+        var paletteSize = 3;
         console.log("Palettesize " + paletteSize);
         getColors(urlof, {
             count: paletteSize
         }).then(colors => {
             removeAllChildNodes(document.getElementById("colors"));
             colors.forEach(color => {
-                originalColors.push(color.rgb());
+                console.log("resetc " + hexToRgb(color.toString()));
+                //  originalColors.push(color.rgb());
+                originalColors.push(hexToRgb(color.toString()));
                 // console.log("color " + color);
                 var blot = document.createElement("INPUT");
                 blot.classList.add("blot");
@@ -110,6 +116,41 @@ const sauce = './marilyn.jpg';
 
     }
 
+    window.shiftcols = function () {
+        shiftColors();
+    }
+
+    function shiftColors() {
+        var oldPaletteArray = [];
+        originalColors.forEach(color => {
+
+            var b = [];
+            color.forEach(numb => {
+                b.push(numb / 255);
+            })
+            console.log("b " + b);
+            oldPaletteArray.push(b);
+            // col.push(color._rgb);
+            // console.log("rev " + hexToHex(color));
+        })
+
+        currentPalette = arrayCycle(currentPalette);
+
+        var filterOptions = mergeArrays(oldPaletteArray, currentPalette);
+        //    filterOptions.push(.2); //replace this with configurable html option later
+        var filterBleed = document.getElementById("tolerance").value;
+
+        n.filters = [new PF.MultiColorReplaceFilter(filterOptions, filterBleed)];
+    }
+
+    function arrayCycle(arr) {
+        var ari = arr;
+        var m = arrayCycle[0];
+        ari.shift();
+        ari.push(m);
+        return ari;
+    }
+
     function hexToRgb(hex) {
         var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? [
@@ -119,27 +160,62 @@ const sauce = './marilyn.jpg';
         ] : null;
     }
 
-    function colormind(inputcolors, callback) {
-        var url = "http://colormind.io/api/";
-        var data = {
-            model: "default",
-            input: inputcolors
-        }
-        // ex inputcolors [[44, 43, 44], [90, 83, 82], "N", "N", "N"]
-        var http = new XMLHttpRequest();
+    function colormind(inputcolor, callback) {
+        var randomPal = [];
+        var cnt = 5;
+        var typ = 'split-complementary';
 
-        http.onreadystatechange = function () {
-            if (http.readyState == 4 && http.status == 200) {
-                var palette = JSON.parse(http.responseText).result;
+        //console.log("col " + 
+        //or
+        var pal =
+            Please.make_scheme({
+                h: Math.floor(Math.random() * 255),
+                s: .7,
+                v: .6
+            }, {
+                scheme_type: typ,
+                format: 'rgb-string'
+            })
+        //   pal rgb(45,153,90),rgb(90,45,153),rgb(153,90,45)
+        pal.forEach(color => {
+            randomPal.push(getRGB(color))
+        })
 
-                //  console.log("colormind retrieved: " + palette);
-                callback(palette);
-            }
-        }
+        callback(randomPal);
 
-        http.open("POST", url, true);
-        http.send(JSON.stringify(data));
     }
+
+    function getRGB(str) {
+        //we could have done this a bit simpler but it's too late now and it would need some kind of processing regardless
+        var match = str.match(/rgba?\((\d{1,3}), ?(\d{1,3}), ?(\d{1,3})\)?(?:, ?(\d(?:\.\d?))\))?/);
+        return match ? [
+       match[1],
+         match[2],
+       match[3]
+    ] : [];
+    }
+
+    //    function colormind(inputcolors, callback) {
+    //        var url = "http://colormind.io/api/";
+    //        var data = {
+    //            model: "default",
+    //            //   input: inputcolors
+    //        }
+    //        // ex inputcolors [[44, 43, 44], [90, 83, 82], "N", "N", "N"]
+    //        var http = new XMLHttpRequest();
+    //
+    //        http.onreadystatechange = function () {
+    //            if (http.readyState == 4 && http.status == 200) {
+    //                var palette = JSON.parse(http.responseText).result;
+    //
+    //                console.log("colormind retrieved: " + palette);
+    //                callback(palette);
+    //            }
+    //        }
+    //
+    //        http.open("POST", url, true);
+    //        http.send(JSON.stringify(data));
+    //    }
 
 
     function runpix(img, aspc) {
@@ -165,30 +241,33 @@ const sauce = './marilyn.jpg';
         console.log("colors " + colors);
         var oldPaletteArray = [];
         colors.forEach(color => {
-            //    console.log(color);
+
             var b = [];
             color.forEach(numb => {
                 b.push(numb / 255);
             })
+            console.log("b " + b);
             oldPaletteArray.push(b);
             // col.push(color._rgb);
             // console.log("rev " + hexToHex(color));
         })
         console.log("oldarray " + oldPaletteArray);
         //colormind(colors, function (newcols) {
-        colormind([], function (newcols) {
+        colormind(null, function (newcols) {
+
             console.log("fk " + JSON.stringify(newcols));
             var newPaletteArray = [];
 
             newcols.forEach(color => {
                 var c = [];
+
                 color.forEach(numb => {
                     c.push(numb / 255);
                 })
                 newPaletteArray.push(c);
             })
             console.log("new " + newPaletteArray);
-
+            currentPalette = newPaletteArray;
             var filterOptions = mergeArrays(oldPaletteArray, newPaletteArray);
             //    filterOptions.push(.2); //replace this with configurable html option later
             var filterBleed = document.getElementById("tolerance").value;
@@ -211,6 +290,7 @@ const sauce = './marilyn.jpg';
         for (var x = 0; x < array1.length; x++) {
             mergedArray.push([array1[x], array2[x]]);
         }
+        console.log("merged " + mergedArray);
         return mergedArray;
     }
 
