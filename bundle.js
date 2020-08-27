@@ -4,7 +4,10 @@ const PIXI = require('pixi.js');
 const PF = require('pixi-filters');
 const getColors = require('get-image-colors');
 
+const Please = require('pleasejs');
+
 var originalColors = [];
+var currentPalette = [];
 
 const sauce = './marilyn.jpg';
 
@@ -68,14 +71,17 @@ const sauce = './marilyn.jpg';
 
     function resetpalette(urlof) {
         originalColors = [];
-        var paletteSize = document.getElementById("nocol").value;
+        // var paletteSize = document.getElementById("nocol").value;
+        var paletteSize = 3;
         console.log("Palettesize " + paletteSize);
         getColors(urlof, {
             count: paletteSize
         }).then(colors => {
             removeAllChildNodes(document.getElementById("colors"));
             colors.forEach(color => {
-                originalColors.push(color.rgb());
+                console.log("resetc " + hexToRgb(color.toString()));
+                //  originalColors.push(color.rgb());
+                originalColors.push(hexToRgb(color.toString()));
                 // console.log("color " + color);
                 var blot = document.createElement("INPUT");
                 blot.classList.add("blot");
@@ -111,6 +117,41 @@ const sauce = './marilyn.jpg';
 
     }
 
+    window.shiftcols = function () {
+        shiftColors();
+    }
+
+    function shiftColors() {
+        var oldPaletteArray = [];
+        originalColors.forEach(color => {
+
+            var b = [];
+            color.forEach(numb => {
+                b.push(numb / 255);
+            })
+            console.log("b " + b);
+            oldPaletteArray.push(b);
+            // col.push(color._rgb);
+            // console.log("rev " + hexToHex(color));
+        })
+
+        currentPalette = arrayCycle(currentPalette);
+
+        var filterOptions = mergeArrays(oldPaletteArray, currentPalette);
+        //    filterOptions.push(.2); //replace this with configurable html option later
+        var filterBleed = document.getElementById("tolerance").value;
+
+        n.filters = [new PF.MultiColorReplaceFilter(filterOptions, filterBleed)];
+    }
+
+    function arrayCycle(arr) {
+        var ari = arr;
+        var m = arrayCycle[0];
+        ari.shift();
+        ari.push(m);
+        return ari;
+    }
+
     function hexToRgb(hex) {
         var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? [
@@ -120,27 +161,62 @@ const sauce = './marilyn.jpg';
         ] : null;
     }
 
-    function colormind(inputcolors, callback) {
-        var url = "http://colormind.io/api/";
-        var data = {
-            model: "default",
-            input: inputcolors
-        }
-        // ex inputcolors [[44, 43, 44], [90, 83, 82], "N", "N", "N"]
-        var http = new XMLHttpRequest();
+    function colormind(inputcolor, callback) {
+        var randomPal = [];
+        var cnt = 5;
+        var typ = 'split-complementary';
 
-        http.onreadystatechange = function () {
-            if (http.readyState == 4 && http.status == 200) {
-                var palette = JSON.parse(http.responseText).result;
+        //console.log("col " + 
+        //or
+        var pal =
+            Please.make_scheme({
+                h: Math.floor(Math.random() * 255),
+                s: .7,
+                v: .6
+            }, {
+                scheme_type: typ,
+                format: 'rgb-string'
+            })
+        //   pal rgb(45,153,90),rgb(90,45,153),rgb(153,90,45)
+        pal.forEach(color => {
+            randomPal.push(getRGB(color))
+        })
 
-                //  console.log("colormind retrieved: " + palette);
-                callback(palette);
-            }
-        }
+        callback(randomPal);
 
-        http.open("POST", url, true);
-        http.send(JSON.stringify(data));
     }
+
+    function getRGB(str) {
+        //we could have done this a bit simpler but it's too late now and it would need some kind of processing regardless
+        var match = str.match(/rgba?\((\d{1,3}), ?(\d{1,3}), ?(\d{1,3})\)?(?:, ?(\d(?:\.\d?))\))?/);
+        return match ? [
+       match[1],
+         match[2],
+       match[3]
+    ] : [];
+    }
+
+    //    function colormind(inputcolors, callback) {
+    //        var url = "http://colormind.io/api/";
+    //        var data = {
+    //            model: "default",
+    //            //   input: inputcolors
+    //        }
+    //        // ex inputcolors [[44, 43, 44], [90, 83, 82], "N", "N", "N"]
+    //        var http = new XMLHttpRequest();
+    //
+    //        http.onreadystatechange = function () {
+    //            if (http.readyState == 4 && http.status == 200) {
+    //                var palette = JSON.parse(http.responseText).result;
+    //
+    //                console.log("colormind retrieved: " + palette);
+    //                callback(palette);
+    //            }
+    //        }
+    //
+    //        http.open("POST", url, true);
+    //        http.send(JSON.stringify(data));
+    //    }
 
 
     function runpix(img, aspc) {
@@ -166,30 +242,33 @@ const sauce = './marilyn.jpg';
         console.log("colors " + colors);
         var oldPaletteArray = [];
         colors.forEach(color => {
-            //    console.log(color);
+
             var b = [];
             color.forEach(numb => {
                 b.push(numb / 255);
             })
+            console.log("b " + b);
             oldPaletteArray.push(b);
             // col.push(color._rgb);
             // console.log("rev " + hexToHex(color));
         })
         console.log("oldarray " + oldPaletteArray);
         //colormind(colors, function (newcols) {
-        colormind([], function (newcols) {
+        colormind(null, function (newcols) {
+
             console.log("fk " + JSON.stringify(newcols));
             var newPaletteArray = [];
 
             newcols.forEach(color => {
                 var c = [];
+
                 color.forEach(numb => {
                     c.push(numb / 255);
                 })
                 newPaletteArray.push(c);
             })
             console.log("new " + newPaletteArray);
-
+            currentPalette = newPaletteArray;
             var filterOptions = mergeArrays(oldPaletteArray, newPaletteArray);
             //    filterOptions.push(.2); //replace this with configurable html option later
             var filterBleed = document.getElementById("tolerance").value;
@@ -212,6 +291,7 @@ const sauce = './marilyn.jpg';
         for (var x = 0; x < array1.length; x++) {
             mergedArray.push([array1[x], array2[x]]);
         }
+        console.log("merged " + mergedArray);
         return mergedArray;
     }
 
@@ -232,7 +312,7 @@ const sauce = './marilyn.jpg';
     }
 }());
 
-},{"get-image-colors":116,"pixi-filters":160,"pixi.js":161}],2:[function(require,module,exports){
+},{"get-image-colors":105,"pixi-filters":160,"pixi.js":161,"pleasejs":162}],2:[function(require,module,exports){
 /*!
  * @pixi/accessibility - v5.3.3
  * Compiled Tue, 04 Aug 2020 16:23:09 UTC
@@ -26752,7 +26832,7 @@ exports.LoaderResource = LoaderResource;
 exports.TextureLoader = TextureLoader;
 
 
-},{"@pixi/core":5,"resource-loader":163}],49:[function(require,module,exports){
+},{"@pixi/core":5,"resource-loader":164}],49:[function(require,module,exports){
 /*!
  * @pixi/math - v5.3.3
  * Compiled Tue, 04 Aug 2020 16:23:09 UTC
@@ -31503,7 +31583,7 @@ if (!window.Int32Array) {
 }
 
 
-},{"es6-promise-polyfill":114,"object-assign":156}],57:[function(require,module,exports){
+},{"es6-promise-polyfill":103,"object-assign":156}],57:[function(require,module,exports){
 /*!
  * @pixi/prepare - v5.3.3
  * Compiled Tue, 04 Aug 2020 16:23:09 UTC
@@ -40032,7 +40112,7 @@ exports.trimCanvas = trimCanvas;
 exports.uid = uid;
 
 
-},{"@pixi/constants":4,"@pixi/settings":59,"earcut":105,"eventemitter3":115,"url":202}],68:[function(require,module,exports){
+},{"@pixi/constants":4,"@pixi/settings":59,"earcut":94,"eventemitter3":104,"url":203}],68:[function(require,module,exports){
 module.exports = {
 	trueFunc: function trueFunc(){
 		return true;
@@ -40042,2172 +40122,6 @@ module.exports = {
 	}
 };
 },{}],69:[function(require,module,exports){
-/**
- * Export cheerio (with )
- */
-
-exports = module.exports = require('./lib/cheerio');
-
-/*
-  Export the version
-*/
-
-exports.version = require('./package.json').version;
-
-},{"./lib/cheerio":75,"./package.json":79}],70:[function(require,module,exports){
-var $ = require('../static'),
-    utils = require('../utils'),
-    isTag = utils.isTag,
-    domEach = utils.domEach,
-    hasOwn = Object.prototype.hasOwnProperty,
-    camelCase = utils.camelCase,
-    cssCase = utils.cssCase,
-    rspace = /\s+/,
-    dataAttrPrefix = 'data-',
-    _ = {
-      forEach: require('lodash.foreach'),
-      extend: require('lodash.assignin'),
-      some: require('lodash.some')
-    },
-
-  // Lookup table for coercing string data-* attributes to their corresponding
-  // JavaScript primitives
-  primitives = {
-    null: null,
-    true: true,
-    false: false
-  },
-
-  // Attributes that are booleans
-  rboolean = /^(?:autofocus|autoplay|async|checked|controls|defer|disabled|hidden|loop|multiple|open|readonly|required|scoped|selected)$/i,
-  // Matches strings that look like JSON objects or arrays
-  rbrace = /^(?:\{[\w\W]*\}|\[[\w\W]*\])$/;
-
-
-var getAttr = function(elem, name) {
-  if (!elem || !isTag(elem)) return;
-
-  if (!elem.attribs) {
-    elem.attribs = {};
-  }
-
-  // Return the entire attribs object if no attribute specified
-  if (!name) {
-    return elem.attribs;
-  }
-
-  if (hasOwn.call(elem.attribs, name)) {
-    // Get the (decoded) attribute
-    return rboolean.test(name) ? name : elem.attribs[name];
-  }
-
-  // Mimic the DOM and return text content as value for `option's`
-  if (elem.name === 'option' && name === 'value') {
-    return $.text(elem.children);
-  }
-
-  // Mimic DOM with default value for radios/checkboxes
-  if (elem.name === 'input' &&
-      (elem.attribs.type === 'radio' || elem.attribs.type === 'checkbox') &&
-      name === 'value') {
-    return 'on';
-  }
-};
-
-var setAttr = function(el, name, value) {
-
-  if (value === null) {
-    removeAttribute(el, name);
-  } else {
-    el.attribs[name] = value+'';
-  }
-};
-
-exports.attr = function(name, value) {
-  // Set the value (with attr map support)
-  if (typeof name === 'object' || value !== undefined) {
-    if (typeof value === 'function') {
-      return domEach(this, function(i, el) {
-        setAttr(el, name, value.call(el, i, el.attribs[name]));
-      });
-    }
-    return domEach(this, function(i, el) {
-      if (!isTag(el)) return;
-
-      if (typeof name === 'object') {
-        _.forEach(name, function(value, name) {
-          setAttr(el, name, value);
-        });
-      } else {
-        setAttr(el, name, value);
-      }
-    });
-  }
-
-  return getAttr(this[0], name);
-};
-
-var getProp = function (el, name) {
-  if (!el || !isTag(el)) return;
-  
-  return el.hasOwnProperty(name)
-      ? el[name]
-      : rboolean.test(name)
-          ? getAttr(el, name) !== undefined
-          : getAttr(el, name);
-};
-
-var setProp = function (el, name, value) {
-  el[name] = rboolean.test(name) ? !!value : value;
-};
-
-exports.prop = function (name, value) {
-  var i = 0,
-      property;
-
-  if (typeof name === 'string' && value === undefined) {
-
-    switch (name) {
-      case 'style':
-        property = this.css();
-
-        _.forEach(property, function (v, p) {
-          property[i++] = p;
-        });
-
-        property.length = i;
-
-        break;
-      case 'tagName':
-      case 'nodeName':
-        property = this[0].name.toUpperCase();
-        break;
-      default:
-        property = getProp(this[0], name);
-    }
-
-    return property;
-  }
-
-  if (typeof name === 'object' || value !== undefined) {
-
-    if (typeof value === 'function') {
-      return domEach(this, function(i, el) {
-        setProp(el, name, value.call(el, i, getProp(el, name)));
-      });
-    }
-
-    return domEach(this, function(i, el) {
-      if (!isTag(el)) return;
-
-      if (typeof name === 'object') {
-
-        _.forEach(name, function(val, name) {
-          setProp(el, name, val);
-        });
-
-      } else {
-        setProp(el, name, value);
-      }
-    });
-
-  }
-};
-
-var setData = function(el, name, value) {
-  if (!el.data) {
-    el.data = {};
-  }
-
-  if (typeof name === 'object') return _.extend(el.data, name);
-  if (typeof name === 'string' && value !== undefined) {
-    el.data[name] = value;
-  } else if (typeof name === 'object') {
-    _.extend(el.data, name);
-  }
-};
-
-// Read the specified attribute from the equivalent HTML5 `data-*` attribute,
-// and (if present) cache the value in the node's internal data store. If no
-// attribute name is specified, read *all* HTML5 `data-*` attributes in this
-// manner.
-var readData = function(el, name) {
-  var readAll = arguments.length === 1;
-  var domNames, domName, jsNames, jsName, value, idx, length;
-
-  if (readAll) {
-    domNames = Object.keys(el.attribs).filter(function(attrName) {
-      return attrName.slice(0, dataAttrPrefix.length) === dataAttrPrefix;
-    });
-    jsNames = domNames.map(function(domName) {
-      return camelCase(domName.slice(dataAttrPrefix.length));
-    });
-  } else {
-    domNames = [dataAttrPrefix + cssCase(name)];
-    jsNames = [name];
-  }
-
-  for (idx = 0, length = domNames.length; idx < length; ++idx) {
-    domName = domNames[idx];
-    jsName = jsNames[idx];
-    if (hasOwn.call(el.attribs, domName)) {
-      value = el.attribs[domName];
-
-      if (hasOwn.call(primitives, value)) {
-        value = primitives[value];
-      } else if (value === String(Number(value))) {
-        value = Number(value);
-      } else if (rbrace.test(value)) {
-        try {
-          value = JSON.parse(value);
-        } catch(e){ }
-      }
-
-      el.data[jsName] = value;
-    }
-  }
-
-  return readAll ? el.data : value;
-};
-
-exports.data = function(name, value) {
-  var elem = this[0];
-
-  if (!elem || !isTag(elem)) return;
-
-  if (!elem.data) {
-    elem.data = {};
-  }
-
-  // Return the entire data object if no data specified
-  if (!name) {
-    return readData(elem);
-  }
-
-  // Set the value (with attr map support)
-  if (typeof name === 'object' || value !== undefined) {
-    domEach(this, function(i, el) {
-      setData(el, name, value);
-    });
-    return this;
-  } else if (hasOwn.call(elem.data, name)) {
-    return elem.data[name];
-  }
-
-  return readData(elem, name);
-};
-
-/**
- * Get the value of an element
- */
-
-exports.val = function(value) {
-  var querying = arguments.length === 0,
-      element = this[0];
-
-  if(!element) return;
-
-  switch (element.name) {
-    case 'textarea':
-      return this.text(value);
-    case 'input':
-      switch (this.attr('type')) {
-        case 'radio':
-          if (querying) {
-            return this.attr('value');
-          } else {
-            this.attr('value', value);
-            return this;
-          }
-          break;
-        default:
-          return this.attr('value', value);
-      }
-      return;
-    case 'select':
-      var option = this.find('option:selected'),
-          returnValue;
-      if (option === undefined) return undefined;
-      if (!querying) {
-        if (!this.attr().hasOwnProperty('multiple') && typeof value == 'object') {
-          return this;
-        }
-        if (typeof value != 'object') {
-          value = [value];
-        }
-        this.find('option').removeAttr('selected');
-        for (var i = 0; i < value.length; i++) {
-          this.find('option[value="' + value[i] + '"]').attr('selected', '');
-        }
-        return this;
-      }
-      returnValue = option.attr('value');
-      if (this.attr().hasOwnProperty('multiple')) {
-        returnValue = [];
-        domEach(option, function(i, el) {
-          returnValue.push(getAttr(el, 'value'));
-        });
-      }
-      return returnValue;
-    case 'option':
-      if (!querying) {
-        this.attr('value', value);
-        return this;
-      }
-      return this.attr('value');
-  }
-};
-
-/**
- * Remove an attribute
- */
-
-var removeAttribute = function(elem, name) {
-  if (!elem.attribs || !hasOwn.call(elem.attribs, name))
-    return;
-
-  delete elem.attribs[name];
-};
-
-
-exports.removeAttr = function(name) {
-  domEach(this, function(i, elem) {
-    removeAttribute(elem, name);
-  });
-
-  return this;
-};
-
-exports.hasClass = function(className) {
-  return _.some(this, function(elem) {
-    var attrs = elem.attribs,
-        clazz = attrs && attrs['class'],
-        idx = -1,
-        end;
-
-    if (clazz) {
-      while ((idx = clazz.indexOf(className, idx+1)) > -1) {
-        end = idx + className.length;
-
-        if ((idx === 0 || rspace.test(clazz[idx-1]))
-            && (end === clazz.length || rspace.test(clazz[end]))) {
-          return true;
-        }
-      }
-    }
-  });
-};
-
-exports.addClass = function(value) {
-  // Support functions
-  if (typeof value === 'function') {
-    return domEach(this, function(i, el) {
-      var className = el.attribs['class'] || '';
-      exports.addClass.call([el], value.call(el, i, className));
-    });
-  }
-
-  // Return if no value or not a string or function
-  if (!value || typeof value !== 'string') return this;
-
-  var classNames = value.split(rspace),
-      numElements = this.length;
-
-
-  for (var i = 0; i < numElements; i++) {
-    // If selected element isn't a tag, move on
-    if (!isTag(this[i])) continue;
-
-    // If we don't already have classes
-    var className = getAttr(this[i], 'class'),
-        numClasses,
-        setClass;
-
-    if (!className) {
-      setAttr(this[i], 'class', classNames.join(' ').trim());
-    } else {
-      setClass = ' ' + className + ' ';
-      numClasses = classNames.length;
-
-      // Check if class already exists
-      for (var j = 0; j < numClasses; j++) {
-        var appendClass = classNames[j] + ' ';
-        if (setClass.indexOf(' ' + appendClass) < 0)
-          setClass += appendClass;
-      }
-
-      setAttr(this[i], 'class', setClass.trim());
-    }
-  }
-
-  return this;
-};
-
-var splitClass = function(className) {
-  return className ? className.trim().split(rspace) : [];
-};
-
-exports.removeClass = function(value) {
-  var classes,
-      numClasses,
-      removeAll;
-
-  // Handle if value is a function
-  if (typeof value === 'function') {
-    return domEach(this, function(i, el) {
-      exports.removeClass.call(
-        [el], value.call(el, i, el.attribs['class'] || '')
-      );
-    });
-  }
-
-  classes = splitClass(value);
-  numClasses = classes.length;
-  removeAll = arguments.length === 0;
-
-  return domEach(this, function(i, el) {
-    if (!isTag(el)) return;
-
-    if (removeAll) {
-      // Short circuit the remove all case as this is the nice one
-      el.attribs.class = '';
-    } else {
-      var elClasses = splitClass(el.attribs.class),
-          index,
-          changed;
-
-      for (var j = 0; j < numClasses; j++) {
-        index = elClasses.indexOf(classes[j]);
-
-        if (index >= 0) {
-          elClasses.splice(index, 1);
-          changed = true;
-
-          // We have to do another pass to ensure that there are not duplicate
-          // classes listed
-          j--;
-        }
-      }
-      if (changed) {
-        el.attribs.class = elClasses.join(' ');
-      }
-    }
-  });
-};
-
-exports.toggleClass = function(value, stateVal) {
-  // Support functions
-  if (typeof value === 'function') {
-    return domEach(this, function(i, el) {
-      exports.toggleClass.call(
-        [el],
-        value.call(el, i, el.attribs['class'] || '', stateVal),
-        stateVal
-      );
-    });
-  }
-
-  // Return if no value or not a string or function
-  if (!value || typeof value !== 'string') return this;
-
-  var classNames = value.split(rspace),
-    numClasses = classNames.length,
-    state = typeof stateVal === 'boolean' ? stateVal ? 1 : -1 : 0,
-    numElements = this.length,
-    elementClasses,
-    index;
-
-  for (var i = 0; i < numElements; i++) {
-    // If selected element isn't a tag, move on
-    if (!isTag(this[i])) continue;
-
-    elementClasses = splitClass(this[i].attribs.class);
-
-    // Check if class already exists
-    for (var j = 0; j < numClasses; j++) {
-      // Check if the class name is currently defined
-      index = elementClasses.indexOf(classNames[j]);
-
-      // Add if stateValue === true or we are toggling and there is no value
-      if (state >= 0 && index < 0) {
-        elementClasses.push(classNames[j]);
-      } else if (state <= 0 && index >= 0) {
-        // Otherwise remove but only if the item exists
-        elementClasses.splice(index, 1);
-      }
-    }
-
-    this[i].attribs.class = elementClasses.join(' ');
-  }
-
-  return this;
-};
-
-exports.is = function (selector) {
-  if (selector) {
-    return this.filter(selector).length > 0;
-  }
-  return false;
-};
-
-
-},{"../static":77,"../utils":78,"lodash.assignin":135,"lodash.foreach":141,"lodash.some":147}],71:[function(require,module,exports){
-var domEach = require('../utils').domEach,
-    _ = {
-      pick: require('lodash.pick'),
-    };
-
-var toString = Object.prototype.toString;
-
-/**
- * Set / Get css.
- *
- * @param {String|Object} prop
- * @param {String} val
- * @return {self}
- * @api public
- */
-
-exports.css = function(prop, val) {
-  if (arguments.length === 2 ||
-    // When `prop` is a "plain" object
-    (toString.call(prop) === '[object Object]')) {
-    return domEach(this, function(idx, el) {
-      setCss(el, prop, val, idx);
-    });
-  } else {
-    return getCss(this[0], prop);
-  }
-};
-
-/**
- * Set styles of all elements.
- *
- * @param {String|Object} prop
- * @param {String} val
- * @param {Number} idx - optional index within the selection
- * @return {self}
- * @api private
- */
-
-function setCss(el, prop, val, idx) {
-  if ('string' == typeof prop) {
-    var styles = getCss(el);
-    if (typeof val === 'function') {
-      val = val.call(el, idx, styles[prop]);
-    }
-
-    if (val === '') {
-      delete styles[prop];
-    } else if (val != null) {
-      styles[prop] = val;
-    }
-
-    el.attribs.style = stringify(styles);
-  } else if ('object' == typeof prop) {
-    Object.keys(prop).forEach(function(k){
-      setCss(el, k, prop[k]);
-    });
-  }
-}
-
-/**
- * Get parsed styles of the first element.
- *
- * @param {String} prop
- * @return {Object}
- * @api private
- */
-
-function getCss(el, prop) {
-  var styles = parse(el.attribs.style);
-  if (typeof prop === 'string') {
-    return styles[prop];
-  } else if (Array.isArray(prop)) {
-    return _.pick(styles, prop);
-  } else {
-    return styles;
-  }
-}
-
-/**
- * Stringify `obj` to styles.
- *
- * @param {Object} obj
- * @return {Object}
- * @api private
- */
-
-function stringify(obj) {
-  return Object.keys(obj || {})
-    .reduce(function(str, prop){
-      return str += ''
-        + (str ? ' ' : '')
-        + prop
-        + ': '
-        + obj[prop]
-        + ';';
-    }, '');
-}
-
-/**
- * Parse `styles`.
- *
- * @param {String} styles
- * @return {Object}
- * @api private
- */
-
-function parse(styles) {
-  styles = (styles || '').trim();
-
-  if (!styles) return {};
-
-  return styles
-    .split(';')
-    .reduce(function(obj, str){
-      var n = str.indexOf(':');
-      // skip if there is no :, or if it is the first/last character
-      if (n < 1 || n === str.length-1) return obj;
-      obj[str.slice(0,n).trim()] = str.slice(n+1).trim();
-      return obj;
-    }, {});
-}
-
-},{"../utils":78,"lodash.pick":144}],72:[function(require,module,exports){
-// https://github.com/jquery/jquery/blob/2.1.3/src/manipulation/var/rcheckableType.js
-// https://github.com/jquery/jquery/blob/2.1.3/src/serialize.js
-var submittableSelector = 'input,select,textarea,keygen',
-    r20 = /%20/g,
-    rCRLF = /\r?\n/g,
-    _ = {
-      map: require('lodash.map')
-    };
-
-exports.serialize = function() {
-  // Convert form elements into name/value objects
-  var arr = this.serializeArray();
-
-  // Serialize each element into a key/value string
-  var retArr = _.map(arr, function(data) {
-    return encodeURIComponent(data.name) + '=' + encodeURIComponent(data.value);
-  });
-
-  // Return the resulting serialization
-  return retArr.join('&').replace(r20, '+');
-};
-
-exports.serializeArray = function() {
-  // Resolve all form elements from either forms or collections of form elements
-  var Cheerio = this.constructor;
-  return this.map(function() {
-      var elem = this;
-      var $elem = Cheerio(elem);
-      if (elem.name === 'form') {
-        return $elem.find(submittableSelector).toArray();
-      } else {
-        return $elem.filter(submittableSelector).toArray();
-      }
-    }).filter(
-        // Verify elements have a name (`attr.name`) and are not disabled (`:disabled`)
-        '[name!=""]:not(:disabled)'
-        // and cannot be clicked (`[type=submit]`) or are used in `x-www-form-urlencoded` (`[type=file]`)
-        + ':not(:submit, :button, :image, :reset, :file)'
-        // and are either checked/don't have a checkable state
-        + ':matches([checked], :not(:checkbox, :radio))'
-    // Convert each of the elements to its value(s)
-    ).map(function(i, elem) {
-      var $elem = Cheerio(elem);
-      var name = $elem.attr('name');
-      var val = $elem.val();
-
-      // If there is no value set (e.g. `undefined`, `null`), then return nothing
-      if (val == null) {
-        return null;
-      } else {
-        // If we have an array of values (e.g. `<select multiple>`), return an array of key/value pairs
-        if (Array.isArray(val)) {
-          return _.map(val, function(val) {
-            // We trim replace any line endings (e.g. `\r` or `\r\n` with `\r\n`) to guarantee consistency across platforms
-            //   These can occur inside of `<textarea>'s`
-            return {name: name, value: val.replace( rCRLF, '\r\n' )};
-          });
-        // Otherwise (e.g. `<input type="text">`, return only one key/value pair
-        } else {
-          return {name: name, value: val.replace( rCRLF, '\r\n' )};
-        }
-      }
-    // Convert our result to an array
-    }).get();
-};
-
-},{"lodash.map":142}],73:[function(require,module,exports){
-var parse = require('../parse'),
-    $ = require('../static'),
-    updateDOM = parse.update,
-    evaluate = parse.evaluate,
-    utils = require('../utils'),
-    domEach = utils.domEach,
-    cloneDom = utils.cloneDom,
-    isHtml = utils.isHtml,
-    slice = Array.prototype.slice,
-    _ = {
-      flatten: require('lodash.flatten'),
-      bind: require('lodash.bind'),
-      forEach: require('lodash.foreach')
-    };
-
-// Create an array of nodes, recursing into arrays and parsing strings if
-// necessary
-exports._makeDomArray = function makeDomArray(elem, clone) {
-  if (elem == null) {
-    return [];
-  } else if (elem.cheerio) {
-    return clone ? cloneDom(elem.get(), elem.options) : elem.get();
-  } else if (Array.isArray(elem)) {
-    return _.flatten(elem.map(function(el) {
-      return this._makeDomArray(el, clone);
-    }, this));
-  } else if (typeof elem === 'string') {
-    return evaluate(elem, this.options);
-  } else {
-    return clone ? cloneDom([elem]) : [elem];
-  }
-};
-
-var _insert = function(concatenator) {
-  return function() {
-    var elems = slice.call(arguments),
-        lastIdx = this.length - 1;
-
-    return domEach(this, function(i, el) {
-      var dom, domSrc;
-
-      if (typeof elems[0] === 'function') {
-        domSrc = elems[0].call(el, i, $.html(el.children));
-      } else {
-        domSrc = elems;
-      }
-
-      dom = this._makeDomArray(domSrc, i < lastIdx);
-      concatenator(dom, el.children, el);
-    });
-  };
-};
-
-/*
- * Modify an array in-place, removing some number of elements and adding new
- * elements directly following them.
- *
- * @param {Array} array Target array to splice.
- * @param {Number} spliceIdx Index at which to begin changing the array.
- * @param {Number} spliceCount Number of elements to remove from the array.
- * @param {Array} newElems Elements to insert into the array.
- *
- * @api private
- */
-var uniqueSplice = function(array, spliceIdx, spliceCount, newElems, parent) {
-  var spliceArgs = [spliceIdx, spliceCount].concat(newElems),
-      prev = array[spliceIdx - 1] || null,
-      next = array[spliceIdx] || null;
-  var idx, len, prevIdx, node, oldParent;
-
-  // Before splicing in new elements, ensure they do not already appear in the
-  // current array.
-  for (idx = 0, len = newElems.length; idx < len; ++idx) {
-    node = newElems[idx];
-    oldParent = node.parent || node.root;
-    prevIdx = oldParent && oldParent.children.indexOf(newElems[idx]);
-
-    if (oldParent && prevIdx > -1) {
-      oldParent.children.splice(prevIdx, 1);
-      if (parent === oldParent && spliceIdx > prevIdx) {
-        spliceArgs[0]--;
-      }
-    }
-
-    node.root = null;
-    node.parent = parent;
-
-    if (node.prev) {
-      node.prev.next = node.next || null;
-    }
-
-    if (node.next) {
-      node.next.prev = node.prev || null;
-    }
-
-    node.prev = newElems[idx - 1] || prev;
-    node.next = newElems[idx + 1] || next;
-  }
-
-  if (prev) {
-    prev.next = newElems[0];
-  }
-  if (next) {
-    next.prev = newElems[newElems.length - 1];
-  }
-  return array.splice.apply(array, spliceArgs);
-};
-
-exports.appendTo = function(target) {
-  if (!target.cheerio) {
-    target = this.constructor.call(this.constructor, target, null, this._originalRoot);
-  }
-
-  target.append(this);
-
-  return this;
-};
-
-exports.prependTo = function(target) {
-  if (!target.cheerio) {
-    target = this.constructor.call(this.constructor, target, null, this._originalRoot);
-  }
-
-  target.prepend(this);
-
-  return this;
-};
-
-exports.append = _insert(function(dom, children, parent) {
-  uniqueSplice(children, children.length, 0, dom, parent);
-});
-
-exports.prepend = _insert(function(dom, children, parent) {
-  uniqueSplice(children, 0, 0, dom, parent);
-});
-
-exports.wrap = function(wrapper) {
-  var wrapperFn = typeof wrapper === 'function' && wrapper,
-      lastIdx = this.length - 1;
-
-  _.forEach(this, _.bind(function(el, i) {
-    var parent = el.parent || el.root,
-        siblings = parent.children,
-        dom, index;
-
-    if (!parent) {
-      return;
-    }
-
-    if (wrapperFn) {
-      wrapper = wrapperFn.call(el, i);
-    }
-
-    if (typeof wrapper === 'string' && !isHtml(wrapper)) {
-      wrapper = this.parents().last().find(wrapper).clone();
-    }
-
-    dom = this._makeDomArray(wrapper, i < lastIdx).slice(0, 1);
-    index = siblings.indexOf(el);
-
-    updateDOM([el], dom[0]);
-    // The previous operation removed the current element from the `siblings`
-    // array, so the `dom` array can be inserted without removing any
-    // additional elements.
-    uniqueSplice(siblings, index, 0, dom, parent);
-  }, this));
-
-  return this;
-};
-
-exports.after = function() {
-  var elems = slice.call(arguments),
-      lastIdx = this.length - 1;
-
-  domEach(this, function(i, el) {
-    var parent = el.parent || el.root;
-    if (!parent) {
-      return;
-    }
-
-    var siblings = parent.children,
-        index = siblings.indexOf(el),
-        domSrc, dom;
-
-    // If not found, move on
-    if (index < 0) return;
-
-    if (typeof elems[0] === 'function') {
-      domSrc = elems[0].call(el, i, $.html(el.children));
-    } else {
-      domSrc = elems;
-    }
-    dom = this._makeDomArray(domSrc, i < lastIdx);
-
-    // Add element after `this` element
-    uniqueSplice(siblings, index + 1, 0, dom, parent);
-  });
-
-  return this;
-};
-
-exports.insertAfter = function(target) {
-  var clones = [],
-      self = this;
-  if (typeof target === 'string') {
-    target = this.constructor.call(this.constructor, target, null, this._originalRoot);
-  }
-  target = this._makeDomArray(target);
-  self.remove();
-  domEach(target, function(i, el) {
-    var clonedSelf = self._makeDomArray(self.clone());
-    var parent = el.parent || el.root;
-    if (!parent) {
-      return;
-    }
-
-    var siblings = parent.children,
-        index = siblings.indexOf(el);
-
-    // If not found, move on
-    if (index < 0) return;
-
-    // Add cloned `this` element(s) after target element
-    uniqueSplice(siblings, index + 1, 0, clonedSelf, parent);
-    clones.push(clonedSelf);
-  });
-  return this.constructor.call(this.constructor, this._makeDomArray(clones));
-};
-
-exports.before = function() {
-  var elems = slice.call(arguments),
-      lastIdx = this.length - 1;
-
-  domEach(this, function(i, el) {
-    var parent = el.parent || el.root;
-    if (!parent) {
-      return;
-    }
-
-    var siblings = parent.children,
-        index = siblings.indexOf(el),
-        domSrc, dom;
-
-    // If not found, move on
-    if (index < 0) return;
-
-    if (typeof elems[0] === 'function') {
-      domSrc = elems[0].call(el, i, $.html(el.children));
-    } else {
-      domSrc = elems;
-    }
-
-    dom = this._makeDomArray(domSrc, i < lastIdx);
-
-    // Add element before `el` element
-    uniqueSplice(siblings, index, 0, dom, parent);
-  });
-
-  return this;
-};
-
-exports.insertBefore = function(target) {
-  var clones = [],
-      self = this;
-  if (typeof target === 'string') {
-    target = this.constructor.call(this.constructor, target, null, this._originalRoot);
-  }
-  target = this._makeDomArray(target);
-  self.remove();
-  domEach(target, function(i, el) {
-    var clonedSelf = self._makeDomArray(self.clone());
-    var parent = el.parent || el.root;
-    if (!parent) {
-      return;
-    }
-
-    var siblings = parent.children,
-        index = siblings.indexOf(el);
-
-    // If not found, move on
-    if (index < 0) return;
-
-    // Add cloned `this` element(s) after target element
-    uniqueSplice(siblings, index, 0, clonedSelf, parent);
-    clones.push(clonedSelf);
-  });
-  return this.constructor.call(this.constructor, this._makeDomArray(clones));
-};
-
-/*
-  remove([selector])
-*/
-exports.remove = function(selector) {
-  var elems = this;
-
-  // Filter if we have selector
-  if (selector)
-    elems = elems.filter(selector);
-
-  domEach(elems, function(i, el) {
-    var parent = el.parent || el.root;
-    if (!parent) {
-      return;
-    }
-
-    var siblings = parent.children,
-        index = siblings.indexOf(el);
-
-    if (index < 0) return;
-
-    siblings.splice(index, 1);
-    if (el.prev) {
-      el.prev.next = el.next;
-    }
-    if (el.next) {
-      el.next.prev = el.prev;
-    }
-    el.prev = el.next = el.parent = el.root = null;
-  });
-
-  return this;
-};
-
-exports.replaceWith = function(content) {
-  var self = this;
-
-  domEach(this, function(i, el) {
-    var parent = el.parent || el.root;
-    if (!parent) {
-      return;
-    }
-
-    var siblings = parent.children,
-        dom = self._makeDomArray(typeof content === 'function' ? content.call(el, i, el) : content),
-        index;
-
-    // In the case that `dom` contains nodes that already exist in other
-    // structures, ensure those nodes are properly removed.
-    updateDOM(dom, null);
-
-    index = siblings.indexOf(el);
-
-    // Completely remove old element
-    uniqueSplice(siblings, index, 1, dom, parent);
-    el.parent = el.prev = el.next = el.root = null;
-  });
-
-  return this;
-};
-
-exports.empty = function() {
-  domEach(this, function(i, el) {
-    _.forEach(el.children, function(el) {
-      el.next = el.prev = el.parent = null;
-    });
-
-    el.children.length = 0;
-  });
-  return this;
-};
-
-/**
- * Set/Get the HTML
- */
-exports.html = function(str) {
-  if (str === undefined) {
-    if (!this[0] || !this[0].children) return null;
-    return $.html(this[0].children, this.options);
-  }
-
-  var opts = this.options;
-
-  domEach(this, function(i, el) {
-    _.forEach(el.children, function(el) {
-      el.next = el.prev = el.parent = null;
-    });
-
-    var content = str.cheerio ? str.clone().get() : evaluate('' + str, opts);
-
-    updateDOM(content, el);
-  });
-
-  return this;
-};
-
-exports.toString = function() {
-  return $.html(this, this.options);
-};
-
-exports.text = function(str) {
-  // If `str` is undefined, act as a "getter"
-  if (str === undefined) {
-    return $.text(this);
-  } else if (typeof str === 'function') {
-    // Function support
-    return domEach(this, function(i, el) {
-      var $el = [el];
-      return exports.text.call($el, str.call(el, i, $.text($el)));
-    });
-  }
-
-  // Append text node to each selected elements
-  domEach(this, function(i, el) {
-    _.forEach(el.children, function(el) {
-      el.next = el.prev = el.parent = null;
-    });
-
-    var elem = {
-      data: '' + str,
-      type: 'text',
-      parent: el,
-      prev: null,
-      next: null,
-      children: []
-    };
-
-    updateDOM(elem, el);
-  });
-
-  return this;
-};
-
-exports.clone = function() {
-  return this._make(cloneDom(this.get(), this.options));
-};
-
-},{"../parse":76,"../static":77,"../utils":78,"lodash.bind":136,"lodash.flatten":140,"lodash.foreach":141}],74:[function(require,module,exports){
-var select = require('css-select'),
-    utils = require('../utils'),
-    domEach = utils.domEach,
-    uniqueSort = require('htmlparser2').DomUtils.uniqueSort,
-    isTag = utils.isTag,
-    _ = {
-      bind: require('lodash.bind'),
-      forEach: require('lodash.foreach'),
-      reject: require('lodash.reject'),
-      filter: require('lodash.filter'),
-      reduce: require('lodash.reduce')
-    };
-
-exports.find = function(selectorOrHaystack) {
-  var elems = _.reduce(this, function(memo, elem) {
-    return memo.concat(_.filter(elem.children, isTag));
-  }, []);
-  var contains = this.constructor.contains;
-  var haystack;
-
-  if (selectorOrHaystack && typeof selectorOrHaystack !== 'string') {
-    if (selectorOrHaystack.cheerio) {
-      haystack = selectorOrHaystack.get();
-    } else {
-      haystack = [selectorOrHaystack];
-    }
-
-    return this._make(haystack.filter(function(elem) {
-      var idx, len;
-      for (idx = 0, len = this.length; idx < len; ++idx) {
-        if (contains(this[idx], elem)) {
-          return true;
-        }
-      }
-    }, this));
-  }
-
-  var options = {__proto__: this.options, context: this.toArray()};
-
-  return this._make(select(selectorOrHaystack, elems, options));
-};
-
-// Get the parent of each element in the current set of matched elements,
-// optionally filtered by a selector.
-exports.parent = function(selector) {
-  var set = [];
-
-  domEach(this, function(idx, elem) {
-    var parentElem = elem.parent;
-    if (parentElem && set.indexOf(parentElem) < 0) {
-      set.push(parentElem);
-    }
-  });
-
-  if (arguments.length) {
-    set = exports.filter.call(set, selector, this);
-  }
-
-  return this._make(set);
-};
-
-exports.parents = function(selector) {
-  var parentNodes = [];
-
-  // When multiple DOM elements are in the original set, the resulting set will
-  // be in *reverse* order of the original elements as well, with duplicates
-  // removed.
-  this.get().reverse().forEach(function(elem) {
-    traverseParents(this, elem.parent, selector, Infinity)
-      .forEach(function(node) {
-        if (parentNodes.indexOf(node) === -1) {
-          parentNodes.push(node);
-        }
-      }
-    );
-  }, this);
-
-  return this._make(parentNodes);
-};
-
-exports.parentsUntil = function(selector, filter) {
-  var parentNodes = [], untilNode, untilNodes;
-
-  if (typeof selector === 'string') {
-    untilNode = select(selector, this.parents().toArray(), this.options)[0];
-  } else if (selector && selector.cheerio) {
-    untilNodes = selector.toArray();
-  } else if (selector) {
-    untilNode = selector;
-  }
-
-  // When multiple DOM elements are in the original set, the resulting set will
-  // be in *reverse* order of the original elements as well, with duplicates
-  // removed.
-
-  this.toArray().reverse().forEach(function(elem) {
-    while ((elem = elem.parent)) {
-      if ((untilNode && elem !== untilNode) ||
-        (untilNodes && untilNodes.indexOf(elem) === -1) ||
-        (!untilNode && !untilNodes)) {
-        if (isTag(elem) && parentNodes.indexOf(elem) === -1) { parentNodes.push(elem); }
-      } else {
-        break;
-      }
-    }
-  }, this);
-
-  return this._make(filter ? select(filter, parentNodes, this.options) : parentNodes);
-};
-
-// For each element in the set, get the first element that matches the selector
-// by testing the element itself and traversing up through its ancestors in the
-// DOM tree.
-exports.closest = function(selector) {
-  var set = [];
-
-  if (!selector) {
-    return this._make(set);
-  }
-
-  domEach(this, function(idx, elem) {
-    var closestElem = traverseParents(this, elem, selector, 1)[0];
-
-    // Do not add duplicate elements to the set
-    if (closestElem && set.indexOf(closestElem) < 0) {
-      set.push(closestElem);
-    }
-  }.bind(this));
-
-  return this._make(set);
-};
-
-exports.next = function(selector) {
-  if (!this[0]) { return this; }
-  var elems = [];
-
-  _.forEach(this, function(elem) {
-    while ((elem = elem.next)) {
-      if (isTag(elem)) {
-        elems.push(elem);
-        return;
-      }
-    }
-  });
-
-  return selector ?
-    exports.filter.call(elems, selector, this) :
-    this._make(elems);
-};
-
-exports.nextAll = function(selector) {
-  if (!this[0]) { return this; }
-  var elems = [];
-
-  _.forEach(this, function(elem) {
-    while ((elem = elem.next)) {
-      if (isTag(elem) && elems.indexOf(elem) === -1) {
-        elems.push(elem);
-      }
-    }
-  });
-
-  return selector ?
-    exports.filter.call(elems, selector, this) :
-    this._make(elems);
-};
-
-exports.nextUntil = function(selector, filterSelector) {
-  if (!this[0]) { return this; }
-  var elems = [], untilNode, untilNodes;
-
-  if (typeof selector === 'string') {
-    untilNode = select(selector, this.nextAll().get(), this.options)[0];
-  } else if (selector && selector.cheerio) {
-    untilNodes = selector.get();
-  } else if (selector) {
-    untilNode = selector;
-  }
-
-  _.forEach(this, function(elem) {
-    while ((elem = elem.next)) {
-      if ((untilNode && elem !== untilNode) ||
-        (untilNodes && untilNodes.indexOf(elem) === -1) ||
-        (!untilNode && !untilNodes)) {
-        if (isTag(elem) && elems.indexOf(elem) === -1) {
-          elems.push(elem);
-        }
-      } else {
-        break;
-      }
-    }
-  });
-
-  return filterSelector ?
-    exports.filter.call(elems, filterSelector, this) :
-    this._make(elems);
-};
-
-exports.prev = function(selector) {
-  if (!this[0]) { return this; }
-  var elems = [];
-
-  _.forEach(this, function(elem) {
-    while ((elem = elem.prev)) {
-      if (isTag(elem)) {
-        elems.push(elem);
-        return;
-      }
-    }
-  });
-
-  return selector ?
-    exports.filter.call(elems, selector, this) :
-    this._make(elems);
-};
-
-exports.prevAll = function(selector) {
-  if (!this[0]) { return this; }
-  var elems = [];
-
-  _.forEach(this, function(elem) {
-    while ((elem = elem.prev)) {
-      if (isTag(elem) && elems.indexOf(elem) === -1) {
-        elems.push(elem);
-      }
-    }
-  });
-
-  return selector ?
-    exports.filter.call(elems, selector, this) :
-    this._make(elems);
-};
-
-exports.prevUntil = function(selector, filterSelector) {
-  if (!this[0]) { return this; }
-  var elems = [], untilNode, untilNodes;
-
-  if (typeof selector === 'string') {
-    untilNode = select(selector, this.prevAll().get(), this.options)[0];
-  } else if (selector && selector.cheerio) {
-    untilNodes = selector.get();
-  } else if (selector) {
-    untilNode = selector;
-  }
-
-  _.forEach(this, function(elem) {
-    while ((elem = elem.prev)) {
-      if ((untilNode && elem !== untilNode) ||
-        (untilNodes && untilNodes.indexOf(elem) === -1) ||
-        (!untilNode && !untilNodes)) {
-        if (isTag(elem) && elems.indexOf(elem) === -1) {
-          elems.push(elem);
-        }
-      } else {
-        break;
-      }
-    }
-  });
-
-  return filterSelector ?
-    exports.filter.call(elems, filterSelector, this) :
-    this._make(elems);
-};
-
-exports.siblings = function(selector) {
-  var parent = this.parent();
-
-  var elems = _.filter(
-    parent ? parent.children() : this.siblingsAndMe(),
-    _.bind(function(elem) { return isTag(elem) && !this.is(elem); }, this)
-  );
-
-  if (selector !== undefined) {
-    return exports.filter.call(elems, selector, this);
-  } else {
-    return this._make(elems);
-  }
-};
-
-exports.children = function(selector) {
-
-  var elems = _.reduce(this, function(memo, elem) {
-    return memo.concat(_.filter(elem.children, isTag));
-  }, []);
-
-  if (selector === undefined) return this._make(elems);
-
-  return exports.filter.call(elems, selector, this);
-};
-
-exports.contents = function() {
-  return this._make(_.reduce(this, function(all, elem) {
-    all.push.apply(all, elem.children);
-    return all;
-  }, []));
-};
-
-exports.each = function(fn) {
-  var i = 0, len = this.length;
-  while (i < len && fn.call(this[i], i, this[i]) !== false) ++i;
-  return this;
-};
-
-exports.map = function(fn) {
-  return this._make(_.reduce(this, function(memo, el, i) {
-    var val = fn.call(el, i, el);
-    return val == null ? memo : memo.concat(val);
-  }, []));
-};
-
-var makeFilterMethod = function(filterFn) {
-  return function(match, container) {
-    var testFn;
-    container = container || this;
-
-    if (typeof match === 'string') {
-      testFn = select.compile(match, container.options);
-    } else if (typeof match === 'function') {
-      testFn = function(el, i) {
-        return match.call(el, i, el);
-      };
-    } else if (match.cheerio) {
-      testFn = match.is.bind(match);
-    } else {
-      testFn = function(el) {
-        return match === el;
-      };
-    }
-
-    return container._make(filterFn(this, testFn));
-  };
-};
-
-exports.filter = makeFilterMethod(_.filter);
-exports.not = makeFilterMethod(_.reject);
-
-exports.has = function(selectorOrHaystack) {
-  var that = this;
-  return exports.filter.call(this, function() {
-    return that._make(this).find(selectorOrHaystack).length > 0;
-  });
-};
-
-exports.first = function() {
-  return this.length > 1 ? this._make(this[0]) : this;
-};
-
-exports.last = function() {
-  return this.length > 1 ? this._make(this[this.length - 1]) : this;
-};
-
-// Reduce the set of matched elements to the one at the specified index.
-exports.eq = function(i) {
-  i = +i;
-
-  // Use the first identity optimization if possible
-  if (i === 0 && this.length <= 1) return this;
-
-  if (i < 0) i = this.length + i;
-  return this[i] ? this._make(this[i]) : this._make([]);
-};
-
-// Retrieve the DOM elements matched by the jQuery object.
-exports.get = function(i) {
-  if (i == null) {
-    return Array.prototype.slice.call(this);
-  } else {
-    return this[i < 0 ? (this.length + i) : i];
-  }
-};
-
-// Search for a given element from among the matched elements.
-exports.index = function(selectorOrNeedle) {
-  var $haystack, needle;
-
-  if (arguments.length === 0) {
-    $haystack = this.parent().children();
-    needle = this[0];
-  } else if (typeof selectorOrNeedle === 'string') {
-    $haystack = this._make(selectorOrNeedle);
-    needle = this[0];
-  } else {
-    $haystack = this;
-    needle = selectorOrNeedle.cheerio ? selectorOrNeedle[0] : selectorOrNeedle;
-  }
-
-  return $haystack.get().indexOf(needle);
-};
-
-exports.slice = function() {
-  return this._make([].slice.apply(this, arguments));
-};
-
-function traverseParents(self, elem, selector, limit) {
-  var elems = [];
-  while (elem && elems.length < limit) {
-    if (!selector || exports.filter.call([elem], selector, self).length) {
-      elems.push(elem);
-    }
-    elem = elem.parent;
-  }
-  return elems;
-}
-
-// End the most recent filtering operation in the current chain and return the
-// set of matched elements to its previous state.
-exports.end = function() {
-  return this.prevObject || this._make([]);
-};
-
-exports.add = function(other, context) {
-  var selection = this._make(other, context);
-  var contents = uniqueSort(selection.get().concat(this.get()));
-
-  for (var i = 0; i < contents.length; ++i) {
-    selection[i] = contents[i];
-  }
-  selection.length = contents.length;
-
-  return selection;
-};
-
-// Add the previous set of elements on the stack to the current set, optionally
-// filtered by a selector.
-exports.addBack = function(selector) {
-  return this.add(
-    arguments.length ? this.prevObject.filter(selector) : this.prevObject
-  );
-};
-
-},{"../utils":78,"css-select":81,"htmlparser2":128,"lodash.bind":136,"lodash.filter":139,"lodash.foreach":141,"lodash.reduce":145,"lodash.reject":146}],75:[function(require,module,exports){
-/*
-  Module dependencies
-*/
-
-var parse = require('./parse'),
-    isHtml = require('./utils').isHtml,
-    _ = {
-      extend: require('lodash.assignin'),
-      bind: require('lodash.bind'),
-      forEach: require('lodash.foreach'),
-      defaults: require('lodash.defaults')
-    };
-
-/*
- * The API
- */
-
-var api = [
-  require('./api/attributes'),
-  require('./api/traversing'),
-  require('./api/manipulation'),
-  require('./api/css'),
-  require('./api/forms')
-];
-
-/*
- * Instance of cheerio
- */
-
-var Cheerio = module.exports = function(selector, context, root, options) {
-  if (!(this instanceof Cheerio)) return new Cheerio(selector, context, root, options);
-
-  this.options = _.defaults(options || {}, this.options);
-
-  // $(), $(null), $(undefined), $(false)
-  if (!selector) return this;
-
-  if (root) {
-    if (typeof root === 'string') root = parse(root, this.options);
-    this._root = Cheerio.call(this, root);
-  }
-
-  // $($)
-  if (selector.cheerio) return selector;
-
-  // $(dom)
-  if (isNode(selector))
-    selector = [selector];
-
-  // $([dom])
-  if (Array.isArray(selector)) {
-    _.forEach(selector, _.bind(function(elem, idx) {
-      this[idx] = elem;
-    }, this));
-    this.length = selector.length;
-    return this;
-  }
-
-  // $(<html>)
-  if (typeof selector === 'string' && isHtml(selector)) {
-    return Cheerio.call(this, parse(selector, this.options).children);
-  }
-
-  // If we don't have a context, maybe we have a root, from loading
-  if (!context) {
-    context = this._root;
-  } else if (typeof context === 'string') {
-    if (isHtml(context)) {
-      // $('li', '<ul>...</ul>')
-      context = parse(context, this.options);
-      context = Cheerio.call(this, context);
-    } else {
-      // $('li', 'ul')
-      selector = [context, selector].join(' ');
-      context = this._root;
-    }
-  // $('li', node), $('li', [nodes])
-  } else if (!context.cheerio) {
-    context = Cheerio.call(this, context);
-  }
-
-  // If we still don't have a context, return
-  if (!context) return this;
-
-  // #id, .class, tag
-  return context.find(selector);
-};
-
-/**
- * Mix in `static`
- */
-
-_.extend(Cheerio, require('./static'));
-
-/*
- * Set a signature of the object
- */
-
-Cheerio.prototype.cheerio = '[cheerio object]';
-
-/*
- * Cheerio default options
- */
-
-Cheerio.prototype.options = {
-  withDomLvl1: true,
-  normalizeWhitespace: false,
-  xmlMode: false,
-  decodeEntities: true
-};
-
-/*
- * Make cheerio an array-like object
- */
-
-Cheerio.prototype.length = 0;
-Cheerio.prototype.splice = Array.prototype.splice;
-
-/*
- * Make a cheerio object
- *
- * @api private
- */
-
-Cheerio.prototype._make = function(dom, context) {
-  var cheerio = new this.constructor(dom, context, this._root, this.options);
-  cheerio.prevObject = this;
-  return cheerio;
-};
-
-/**
- * Turn a cheerio object into an array
- */
-
-Cheerio.prototype.toArray = function() {
-  return this.get();
-};
-
-/**
- * Plug in the API
- */
-api.forEach(function(mod) {
-  _.extend(Cheerio.prototype, mod);
-});
-
-var isNode = function(obj) {
-  return obj.name || obj.type === 'text' || obj.type === 'comment';
-};
-
-},{"./api/attributes":70,"./api/css":71,"./api/forms":72,"./api/manipulation":73,"./api/traversing":74,"./parse":76,"./static":77,"./utils":78,"lodash.assignin":135,"lodash.bind":136,"lodash.defaults":138,"lodash.foreach":141}],76:[function(require,module,exports){
-(function (Buffer){
-/*
-  Module Dependencies
-*/
-var htmlparser = require('htmlparser2');
-
-/*
-  Parser
-*/
-exports = module.exports = function(content, options) {
-  var dom = exports.evaluate(content, options),
-      // Generic root element
-      root = exports.evaluate('<root></root>', options)[0];
-
-  root.type = 'root';
-
-  // Update the dom using the root
-  exports.update(dom, root);
-
-  return root;
-};
-
-exports.evaluate = function(content, options) {
-  // options = options || $.fn.options;
-
-  var dom;
-
-  if (typeof content === 'string' || Buffer.isBuffer(content)) {
-    dom = htmlparser.parseDOM(content, options);
-  } else {
-    dom = content;
-  }
-
-  return dom;
-};
-
-/*
-  Update the dom structure, for one changed layer
-*/
-exports.update = function(arr, parent) {
-  // normalize
-  if (!Array.isArray(arr)) arr = [arr];
-
-  // Update parent
-  if (parent) {
-    parent.children = arr;
-  } else {
-    parent = null;
-  }
-
-  // Update neighbors
-  for (var i = 0; i < arr.length; i++) {
-    var node = arr[i];
-
-    // Cleanly remove existing nodes from their previous structures.
-    var oldParent = node.parent || node.root,
-        oldSiblings = oldParent && oldParent.children;
-    if (oldSiblings && oldSiblings !== arr) {
-      oldSiblings.splice(oldSiblings.indexOf(node), 1);
-      if (node.prev) {
-        node.prev.next = node.next;
-      }
-      if (node.next) {
-        node.next.prev = node.prev;
-      }
-    }
-
-    if (parent) {
-      node.prev = arr[i - 1] || null;
-      node.next = arr[i + 1] || null;
-    } else {
-      node.prev = node.next = null;
-    }
-
-    if (parent && parent.type === 'root') {
-      node.root = parent;
-      node.parent = null;
-    } else {
-      node.root = null;
-      node.parent = parent;
-    }
-  }
-
-  return parent;
-};
-
-// module.exports = $.extend(exports);
-
-}).call(this,{"isBuffer":require("../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{"../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":174,"htmlparser2":128}],77:[function(require,module,exports){
-/**
- * Module dependencies
- */
-
-var serialize = require('dom-serializer'),
-    select = require('css-select'),
-    parse = require('./parse'),
-    _ = {
-      merge: require('lodash.merge'),
-      defaults: require('lodash.defaults')
-    };
-
-/**
- * $.load(str)
- */
-
-exports.load = function(content, options) {
-  var Cheerio = require('./cheerio');
-
-  options = _.defaults(options || {}, Cheerio.prototype.options);
-
-  var root = parse(content, options);
-
-  var initialize = function(selector, context, r, opts) {
-    if (!(this instanceof initialize)) {
-      return new initialize(selector, context, r, opts);
-    }
-    opts = _.defaults(opts || {}, options);
-    return Cheerio.call(this, selector, context, r || root, opts);
-  };
-
-  // Ensure that selections created by the "loaded" `initialize` function are
-  // true Cheerio instances.
-  initialize.prototype = Object.create(Cheerio.prototype);
-  initialize.prototype.constructor = initialize;
-
-  // Mimic jQuery's prototype alias for plugin authors.
-  initialize.fn = initialize.prototype;
-
-  // Keep a reference to the top-level scope so we can chain methods that implicitly
-  // resolve selectors; e.g. $("<span>").(".bar"), which otherwise loses ._root
-  initialize.prototype._originalRoot = root;
-
-  // Add in the static methods
-  _.merge(initialize, exports);
-
-  // Add in the root
-  initialize._root = root;
-  // store options
-  initialize._options = options;
-
-  return initialize;
-};
-
-/*
-* Helper function
-*/
-
-function render(that, dom, options) {
-  if (!dom) {
-    if (that._root && that._root.children) {
-      dom = that._root.children;
-    } else {
-      return '';
-    }
-  } else if (typeof dom === 'string') {
-    dom = select(dom, that._root, options);
-  }
-
-  return serialize(dom, options);
-}
-
-/**
- * $.html([selector | dom], [options])
- */
-
-exports.html = function(dom, options) {
-  var Cheerio = require('./cheerio');
-
-  // be flexible about parameters, sometimes we call html(),
-  // with options as only parameter
-  // check dom argument for dom element specific properties
-  // assume there is no 'length' or 'type' properties in the options object
-  if (Object.prototype.toString.call(dom) === '[object Object]' && !options && !('length' in dom) && !('type' in dom))
-  {
-    options = dom;
-    dom = undefined;
-  }
-
-  // sometimes $.html() used without preloading html
-  // so fallback non existing options to the default ones
-  options = _.defaults(options || {}, this._options, Cheerio.prototype.options);
-
-  return render(this, dom, options);
-};
-
-/**
- * $.xml([selector | dom])
- */
-
-exports.xml = function(dom) {
-  var options = _.defaults({xmlMode: true}, this._options);
-
-  return render(this, dom, options);
-};
-
-/**
- * $.text(dom)
- */
-
-exports.text = function(elems) {
-  if (!elems) {
-    elems = this.root();
-  }
-
-  var ret = '',
-      len = elems.length,
-      elem;
-
-  for (var i = 0; i < len; i++) {
-    elem = elems[i];
-    if (elem.type === 'text') ret += elem.data;
-    else if (elem.children && elem.type !== 'comment') {
-      ret += exports.text(elem.children);
-    }
-  }
-
-  return ret;
-};
-
-/**
- * $.parseHTML(data [, context ] [, keepScripts ])
- * Parses a string into an array of DOM nodes. The `context` argument has no
- * meaning for Cheerio, but it is maintained for API compatibility with jQuery.
- */
-exports.parseHTML = function(data, context, keepScripts) {
-  var parsed;
-
-  if (!data || typeof data !== 'string') {
-    return null;
-  }
-
-  if (typeof context === 'boolean') {
-    keepScripts = context;
-  }
-
-  parsed = this.load(data);
-  if (!keepScripts) {
-    parsed('script').remove();
-  }
-
-  // The `children` array is used by Cheerio internally to group elements that
-  // share the same parents. When nodes created through `parseHTML` are
-  // inserted into previously-existing DOM structures, they will be removed
-  // from the `children` array. The results of `parseHTML` should remain
-  // constant across these operations, so a shallow copy should be returned.
-  return parsed.root()[0].children.slice();
-};
-
-/**
- * $.root()
- */
-exports.root = function() {
-  return this(this._root);
-};
-
-/**
- * $.contains()
- */
-exports.contains = function(container, contained) {
-
-  // According to the jQuery API, an element does not "contain" itself
-  if (contained === container) {
-    return false;
-  }
-
-  // Step up the descendants, stopping when the root element is reached
-  // (signaled by `.parent` returning a reference to the same object)
-  while (contained && contained !== contained.parent) {
-    contained = contained.parent;
-    if (contained === container) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-},{"./cheerio":75,"./parse":76,"css-select":81,"dom-serializer":93,"lodash.defaults":138,"lodash.merge":143}],78:[function(require,module,exports){
-var parse = require('./parse'),
-    render = require('dom-serializer');
-
-/**
- * HTML Tags
- */
-
-var tags = { tag: true, script: true, style: true };
-
-/**
- * Check if the DOM element is a tag
- *
- * isTag(type) includes <script> and <style> tags
- */
-
-exports.isTag = function(type) {
-  if (type.type) type = type.type;
-  return tags[type] || false;
-};
-
-/**
- * Convert a string to camel case notation.
- * @param  {String} str String to be converted.
- * @return {String}     String in camel case notation.
- */
-
-exports.camelCase = function(str) {
-  return str.replace(/[_.-](\w|$)/g, function(_, x) {
-    return x.toUpperCase();
-  });
-};
-
-/**
- * Convert a string from camel case to "CSS case", where word boundaries are
- * described by hyphens ("-") and all characters are lower-case.
- * @param  {String} str String to be converted.
- * @return {string}     String in "CSS case".
- */
-exports.cssCase = function(str) {
-  return str.replace(/[A-Z]/g, '-$&').toLowerCase();
-};
-
-/**
- * Iterate over each DOM element without creating intermediary Cheerio instances.
- *
- * This is indented for use internally to avoid otherwise unnecessary memory pressure introduced
- * by _make.
- */
-
-exports.domEach = function(cheerio, fn) {
-  var i = 0, len = cheerio.length;
-  while (i < len && fn.call(cheerio, i, cheerio[i]) !== false) ++i;
-  return cheerio;
-};
-
-/**
- * Create a deep copy of the given DOM structure by first rendering it to a
- * string and then parsing the resultant markup.
- *
- * @argument {Object} dom - The htmlparser2-compliant DOM structure
- * @argument {Object} options - The parsing/rendering options
- */
-exports.cloneDom = function(dom, options) {
-  return parse(render(dom, options), options).children;
-};
-
-/*
- * A simple way to check for HTML strings or ID strings
- */
-
-var quickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*$|#([\w\-]*)$)/;
-
-/*
- * Check if string is HTML
- */
-exports.isHtml = function(str) {
-  // Faster than running regex, if str starts with `<` and ends with `>`, assume it's HTML
-  if (str.charAt(0) === '<' && str.charAt(str.length - 1) === '>' && str.length >= 3) return true;
-
-  // Run the regex
-  var match = quickExpr.exec(str);
-  return !!(match && match[1]);
-};
-
-},{"./parse":76,"dom-serializer":93}],79:[function(require,module,exports){
-module.exports={
-  "_from": "cheerio@^0.22.0",
-  "_id": "cheerio@0.22.0",
-  "_inBundle": false,
-  "_integrity": "sha1-qbqoYKP5tZWmuBsahocxIe06Jp4=",
-  "_location": "/cheerio",
-  "_phantomChildren": {},
-  "_requested": {
-    "type": "range",
-    "registry": true,
-    "raw": "cheerio@^0.22.0",
-    "name": "cheerio",
-    "escapedName": "cheerio",
-    "rawSpec": "^0.22.0",
-    "saveSpec": null,
-    "fetchSpec": "^0.22.0"
-  },
-  "_requiredBy": [
-    "/get-svg-colors"
-  ],
-  "_resolved": "https://registry.npmjs.org/cheerio/-/cheerio-0.22.0.tgz",
-  "_shasum": "a9baa860a3f9b595a6b81b1a86873121ed3a269e",
-  "_spec": "cheerio@^0.22.0",
-  "_where": "/Users/annie/Desktop/kamelette/node_modules/get-svg-colors",
-  "author": {
-    "name": "Matt Mueller",
-    "email": "mattmuelle@gmail.com",
-    "url": "mat.io"
-  },
-  "bugs": {
-    "url": "https://github.com/cheeriojs/cheerio/issues"
-  },
-  "bundleDependencies": false,
-  "dependencies": {
-    "css-select": "~1.2.0",
-    "dom-serializer": "~0.1.0",
-    "entities": "~1.1.1",
-    "htmlparser2": "^3.9.1",
-    "lodash.assignin": "^4.0.9",
-    "lodash.bind": "^4.1.4",
-    "lodash.defaults": "^4.0.1",
-    "lodash.filter": "^4.4.0",
-    "lodash.flatten": "^4.2.0",
-    "lodash.foreach": "^4.3.0",
-    "lodash.map": "^4.4.0",
-    "lodash.merge": "^4.4.0",
-    "lodash.pick": "^4.2.1",
-    "lodash.reduce": "^4.4.0",
-    "lodash.reject": "^4.4.0",
-    "lodash.some": "^4.4.0"
-  },
-  "deprecated": false,
-  "description": "Tiny, fast, and elegant implementation of core jQuery designed specifically for the server",
-  "devDependencies": {
-    "benchmark": "^2.1.0",
-    "coveralls": "^2.11.9",
-    "expect.js": "~0.3.1",
-    "istanbul": "^0.4.3",
-    "jquery": "^3.0.0",
-    "jsdom": "^9.2.1",
-    "jshint": "^2.9.2",
-    "mocha": "^2.5.3",
-    "xyz": "~0.5.0"
-  },
-  "engines": {
-    "node": ">= 0.6"
-  },
-  "files": [
-    "index.js",
-    "lib"
-  ],
-  "homepage": "https://github.com/cheeriojs/cheerio#readme",
-  "keywords": [
-    "htmlparser",
-    "jquery",
-    "selector",
-    "scraper",
-    "parser",
-    "html"
-  ],
-  "license": "MIT",
-  "main": "./index.js",
-  "name": "cheerio",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/cheeriojs/cheerio.git"
-  },
-  "scripts": {
-    "test": "make test"
-  },
-  "version": "0.22.0"
-}
-
-},{}],80:[function(require,module,exports){
 
 /**
  * @license
@@ -44950,7 +42864,7 @@ module.exports={
 
 }).call(this);
 
-},{}],81:[function(require,module,exports){
+},{}],70:[function(require,module,exports){
 "use strict";
 
 module.exports = CSSselect;
@@ -45011,7 +42925,7 @@ CSSselect.iterate = selectAll;
 CSSselect._compileUnsafe = compileUnsafe;
 CSSselect._compileToken = compileToken;
 
-},{"./lib/compile.js":83,"./lib/pseudos.js":86,"boolbase":68,"domutils":98}],82:[function(require,module,exports){
+},{"./lib/compile.js":72,"./lib/pseudos.js":75,"boolbase":68,"domutils":87}],71:[function(require,module,exports){
 var DomUtils  = require("domutils"),
     hasAttrib = DomUtils.hasAttrib,
     getAttributeValue = DomUtils.getAttributeValue,
@@ -45194,7 +43108,7 @@ module.exports = {
 	rules: attributeRules
 };
 
-},{"boolbase":68,"domutils":98}],83:[function(require,module,exports){
+},{"boolbase":68,"domutils":87}],72:[function(require,module,exports){
 /*
 	compiles a selector to an executable function
 */
@@ -45388,7 +43302,7 @@ filters.matches = function(next, token, options, context){
 	return compileToken(token, opts, context);
 };
 
-},{"./general.js":84,"./procedure.json":85,"./pseudos.js":86,"./sort.js":87,"boolbase":68,"css-what":88,"domutils":98}],84:[function(require,module,exports){
+},{"./general.js":73,"./procedure.json":74,"./pseudos.js":75,"./sort.js":76,"boolbase":68,"css-what":77,"domutils":87}],73:[function(require,module,exports){
 var DomUtils    = require("domutils"),
     isTag       = DomUtils.isTag,
     getParent   = DomUtils.getParent,
@@ -45478,7 +43392,7 @@ module.exports = {
 		return next;
 	}
 };
-},{"./attributes.js":82,"./pseudos.js":86,"domutils":98}],85:[function(require,module,exports){
+},{"./attributes.js":71,"./pseudos.js":75,"domutils":87}],74:[function(require,module,exports){
 module.exports={
   "universal": 50,
   "tag": 30,
@@ -45491,7 +43405,7 @@ module.exports={
   "adjacent": -1
 }
 
-},{}],86:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 /*
 	pseudo selectors
 
@@ -45886,7 +43800,7 @@ module.exports = {
 	pseudos: pseudos
 };
 
-},{"./attributes.js":82,"boolbase":68,"domutils":98,"nth-check":154}],87:[function(require,module,exports){
+},{"./attributes.js":71,"boolbase":68,"domutils":87,"nth-check":154}],76:[function(require,module,exports){
 module.exports = sortByProcedure;
 
 /*
@@ -45968,7 +43882,7 @@ function getProcedure(token){
 	return proc;
 }
 
-},{"./procedure.json":85}],88:[function(require,module,exports){
+},{"./procedure.json":74}],77:[function(require,module,exports){
 "use strict";
 
 module.exports = parse;
@@ -46244,7 +44158,7 @@ function addToken(subselects, tokens){
 	subselects.push(tokens);
 }
 
-},{}],89:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 "use strict"
 
 var createThunk = require("./lib/thunk.js")
@@ -46355,7 +44269,7 @@ function compileCwise(user_args) {
 
 module.exports = compileCwise
 
-},{"./lib/thunk.js":91}],90:[function(require,module,exports){
+},{"./lib/thunk.js":80}],79:[function(require,module,exports){
 "use strict"
 
 var uniq = require("uniq")
@@ -46715,7 +44629,7 @@ function generateCWiseOp(proc, typesig) {
 }
 module.exports = generateCWiseOp
 
-},{"uniq":165}],91:[function(require,module,exports){
+},{"uniq":166}],80:[function(require,module,exports){
 "use strict"
 
 // The function below is called when constructing a cwise function object, and does the following:
@@ -46803,7 +44717,7 @@ function createThunk(proc) {
 
 module.exports = createThunk
 
-},{"./compile.js":90}],92:[function(require,module,exports){
+},{"./compile.js":79}],81:[function(require,module,exports){
 (function (Buffer){
 
 /**
@@ -46861,7 +44775,7 @@ function dataUriToBuffer (uri) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":169}],93:[function(require,module,exports){
+},{"buffer":170}],82:[function(require,module,exports){
 /*
   Module dependencies
 */
@@ -47011,7 +44925,7 @@ function renderComment(elem) {
   return '<!--' + elem.data + '-->';
 }
 
-},{"domelementtype":94,"entities":106}],94:[function(require,module,exports){
+},{"domelementtype":83,"entities":95}],83:[function(require,module,exports){
 //Types of elements found in the DOM
 module.exports = {
 	Text: "text", //Text
@@ -47028,7 +44942,7 @@ module.exports = {
 	}
 };
 
-},{}],95:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 var ElementType = require("domelementtype");
 
 var re_whitespace = /\s+/g;
@@ -47247,7 +45161,7 @@ DomHandler.prototype.onprocessinginstruction = function(name, data){
 
 module.exports = DomHandler;
 
-},{"./lib/element":96,"./lib/node":97,"domelementtype":94}],96:[function(require,module,exports){
+},{"./lib/element":85,"./lib/node":86,"domelementtype":83}],85:[function(require,module,exports){
 // DOM-Level-1-compliant structure
 var NodePrototype = require('./node');
 var ElementPrototype = module.exports = Object.create(NodePrototype);
@@ -47269,7 +45183,7 @@ Object.keys(domLvl1).forEach(function(key) {
 	});
 });
 
-},{"./node":97}],97:[function(require,module,exports){
+},{"./node":86}],86:[function(require,module,exports){
 // This object will be used as the prototype for Nodes when creating a
 // DOM-Level-1-compliant structure.
 var NodePrototype = module.exports = {
@@ -47315,7 +45229,7 @@ Object.keys(domLvl1).forEach(function(key) {
 	});
 });
 
-},{}],98:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 var DomUtils = module.exports;
 
 [
@@ -47331,7 +45245,7 @@ var DomUtils = module.exports;
 	});
 });
 
-},{"./lib/helpers":99,"./lib/legacy":100,"./lib/manipulation":101,"./lib/querying":102,"./lib/stringify":103,"./lib/traversal":104}],99:[function(require,module,exports){
+},{"./lib/helpers":88,"./lib/legacy":89,"./lib/manipulation":90,"./lib/querying":91,"./lib/stringify":92,"./lib/traversal":93}],88:[function(require,module,exports){
 // removeSubsets
 // Given an array of nodes, remove any member that is contained by another.
 exports.removeSubsets = function(nodes) {
@@ -47474,7 +45388,7 @@ exports.uniqueSort = function(nodes) {
 	return nodes;
 };
 
-},{}],100:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 var ElementType = require("domelementtype");
 var isTag = exports.isTag = ElementType.isTag;
 
@@ -47563,7 +45477,7 @@ exports.getElementsByTagType = function(type, element, recurse, limit){
 	return this.filter(Checks.tag_type(type), element, recurse, limit);
 };
 
-},{"domelementtype":94}],101:[function(require,module,exports){
+},{"domelementtype":83}],90:[function(require,module,exports){
 exports.removeElement = function(elem){
 	if(elem.prev) elem.prev.next = elem.next;
 	if(elem.next) elem.next.prev = elem.prev;
@@ -47642,7 +45556,7 @@ exports.prepend = function(elem, prev){
 
 
 
-},{}],102:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 var isTag = require("domelementtype").isTag;
 
 module.exports = {
@@ -47738,7 +45652,7 @@ function findAll(test, elems){
 	return result;
 }
 
-},{"domelementtype":94}],103:[function(require,module,exports){
+},{"domelementtype":83}],92:[function(require,module,exports){
 var ElementType = require("domelementtype"),
     getOuterHTML = require("dom-serializer"),
     isTag = ElementType.isTag;
@@ -47762,7 +45676,7 @@ function getText(elem){
 	return "";
 }
 
-},{"dom-serializer":93,"domelementtype":94}],104:[function(require,module,exports){
+},{"dom-serializer":82,"domelementtype":83}],93:[function(require,module,exports){
 var getChildren = exports.getChildren = function(elem){
 	return elem.children;
 };
@@ -47788,7 +45702,7 @@ exports.getName = function(elem){
 	return elem.name;
 };
 
-},{}],105:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 'use strict';
 
 module.exports = earcut;
@@ -48469,7 +46383,7 @@ earcut.flatten = function (data) {
     return result;
 };
 
-},{}],106:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 var encode = require("./lib/encode.js"),
     decode = require("./lib/decode.js");
 
@@ -48497,7 +46411,7 @@ exports.decodeHTML4Strict = exports.decodeHTML5Strict = exports.decodeHTMLStrict
 
 exports.escape = encode.escape;
 
-},{"./lib/decode.js":107,"./lib/encode.js":109}],107:[function(require,module,exports){
+},{"./lib/decode.js":96,"./lib/encode.js":98}],96:[function(require,module,exports){
 var entityMap = require("../maps/entities.json"),
     legacyMap = require("../maps/legacy.json"),
     xmlMap = require("../maps/xml.json"),
@@ -48569,7 +46483,7 @@ module.exports = {
     HTMLStrict: decodeHTMLStrict
 };
 
-},{"../maps/entities.json":111,"../maps/legacy.json":112,"../maps/xml.json":113,"./decode_codepoint.js":108}],108:[function(require,module,exports){
+},{"../maps/entities.json":100,"../maps/legacy.json":101,"../maps/xml.json":102,"./decode_codepoint.js":97}],97:[function(require,module,exports){
 var decodeMap = require("../maps/decode.json");
 
 module.exports = decodeCodePoint;
@@ -48596,7 +46510,7 @@ function decodeCodePoint(codePoint) {
     return output;
 }
 
-},{"../maps/decode.json":110}],109:[function(require,module,exports){
+},{"../maps/decode.json":99}],98:[function(require,module,exports){
 var inverseXML = getInverseObj(require("../maps/xml.json")),
     xmlReplacer = getInverseReplacer(inverseXML);
 
@@ -48680,16 +46594,16 @@ function escapeXML(data) {
 
 exports.escape = escapeXML;
 
-},{"../maps/entities.json":111,"../maps/xml.json":113}],110:[function(require,module,exports){
+},{"../maps/entities.json":100,"../maps/xml.json":102}],99:[function(require,module,exports){
 module.exports={"0":65533,"128":8364,"130":8218,"131":402,"132":8222,"133":8230,"134":8224,"135":8225,"136":710,"137":8240,"138":352,"139":8249,"140":338,"142":381,"145":8216,"146":8217,"147":8220,"148":8221,"149":8226,"150":8211,"151":8212,"152":732,"153":8482,"154":353,"155":8250,"156":339,"158":382,"159":376}
-},{}],111:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
 module.exports={"Aacute":"\u00C1","aacute":"\u00E1","Abreve":"\u0102","abreve":"\u0103","ac":"\u223E","acd":"\u223F","acE":"\u223E\u0333","Acirc":"\u00C2","acirc":"\u00E2","acute":"\u00B4","Acy":"\u0410","acy":"\u0430","AElig":"\u00C6","aelig":"\u00E6","af":"\u2061","Afr":"\uD835\uDD04","afr":"\uD835\uDD1E","Agrave":"\u00C0","agrave":"\u00E0","alefsym":"\u2135","aleph":"\u2135","Alpha":"\u0391","alpha":"\u03B1","Amacr":"\u0100","amacr":"\u0101","amalg":"\u2A3F","amp":"&","AMP":"&","andand":"\u2A55","And":"\u2A53","and":"\u2227","andd":"\u2A5C","andslope":"\u2A58","andv":"\u2A5A","ang":"\u2220","ange":"\u29A4","angle":"\u2220","angmsdaa":"\u29A8","angmsdab":"\u29A9","angmsdac":"\u29AA","angmsdad":"\u29AB","angmsdae":"\u29AC","angmsdaf":"\u29AD","angmsdag":"\u29AE","angmsdah":"\u29AF","angmsd":"\u2221","angrt":"\u221F","angrtvb":"\u22BE","angrtvbd":"\u299D","angsph":"\u2222","angst":"\u00C5","angzarr":"\u237C","Aogon":"\u0104","aogon":"\u0105","Aopf":"\uD835\uDD38","aopf":"\uD835\uDD52","apacir":"\u2A6F","ap":"\u2248","apE":"\u2A70","ape":"\u224A","apid":"\u224B","apos":"'","ApplyFunction":"\u2061","approx":"\u2248","approxeq":"\u224A","Aring":"\u00C5","aring":"\u00E5","Ascr":"\uD835\uDC9C","ascr":"\uD835\uDCB6","Assign":"\u2254","ast":"*","asymp":"\u2248","asympeq":"\u224D","Atilde":"\u00C3","atilde":"\u00E3","Auml":"\u00C4","auml":"\u00E4","awconint":"\u2233","awint":"\u2A11","backcong":"\u224C","backepsilon":"\u03F6","backprime":"\u2035","backsim":"\u223D","backsimeq":"\u22CD","Backslash":"\u2216","Barv":"\u2AE7","barvee":"\u22BD","barwed":"\u2305","Barwed":"\u2306","barwedge":"\u2305","bbrk":"\u23B5","bbrktbrk":"\u23B6","bcong":"\u224C","Bcy":"\u0411","bcy":"\u0431","bdquo":"\u201E","becaus":"\u2235","because":"\u2235","Because":"\u2235","bemptyv":"\u29B0","bepsi":"\u03F6","bernou":"\u212C","Bernoullis":"\u212C","Beta":"\u0392","beta":"\u03B2","beth":"\u2136","between":"\u226C","Bfr":"\uD835\uDD05","bfr":"\uD835\uDD1F","bigcap":"\u22C2","bigcirc":"\u25EF","bigcup":"\u22C3","bigodot":"\u2A00","bigoplus":"\u2A01","bigotimes":"\u2A02","bigsqcup":"\u2A06","bigstar":"\u2605","bigtriangledown":"\u25BD","bigtriangleup":"\u25B3","biguplus":"\u2A04","bigvee":"\u22C1","bigwedge":"\u22C0","bkarow":"\u290D","blacklozenge":"\u29EB","blacksquare":"\u25AA","blacktriangle":"\u25B4","blacktriangledown":"\u25BE","blacktriangleleft":"\u25C2","blacktriangleright":"\u25B8","blank":"\u2423","blk12":"\u2592","blk14":"\u2591","blk34":"\u2593","block":"\u2588","bne":"=\u20E5","bnequiv":"\u2261\u20E5","bNot":"\u2AED","bnot":"\u2310","Bopf":"\uD835\uDD39","bopf":"\uD835\uDD53","bot":"\u22A5","bottom":"\u22A5","bowtie":"\u22C8","boxbox":"\u29C9","boxdl":"\u2510","boxdL":"\u2555","boxDl":"\u2556","boxDL":"\u2557","boxdr":"\u250C","boxdR":"\u2552","boxDr":"\u2553","boxDR":"\u2554","boxh":"\u2500","boxH":"\u2550","boxhd":"\u252C","boxHd":"\u2564","boxhD":"\u2565","boxHD":"\u2566","boxhu":"\u2534","boxHu":"\u2567","boxhU":"\u2568","boxHU":"\u2569","boxminus":"\u229F","boxplus":"\u229E","boxtimes":"\u22A0","boxul":"\u2518","boxuL":"\u255B","boxUl":"\u255C","boxUL":"\u255D","boxur":"\u2514","boxuR":"\u2558","boxUr":"\u2559","boxUR":"\u255A","boxv":"\u2502","boxV":"\u2551","boxvh":"\u253C","boxvH":"\u256A","boxVh":"\u256B","boxVH":"\u256C","boxvl":"\u2524","boxvL":"\u2561","boxVl":"\u2562","boxVL":"\u2563","boxvr":"\u251C","boxvR":"\u255E","boxVr":"\u255F","boxVR":"\u2560","bprime":"\u2035","breve":"\u02D8","Breve":"\u02D8","brvbar":"\u00A6","bscr":"\uD835\uDCB7","Bscr":"\u212C","bsemi":"\u204F","bsim":"\u223D","bsime":"\u22CD","bsolb":"\u29C5","bsol":"\\","bsolhsub":"\u27C8","bull":"\u2022","bullet":"\u2022","bump":"\u224E","bumpE":"\u2AAE","bumpe":"\u224F","Bumpeq":"\u224E","bumpeq":"\u224F","Cacute":"\u0106","cacute":"\u0107","capand":"\u2A44","capbrcup":"\u2A49","capcap":"\u2A4B","cap":"\u2229","Cap":"\u22D2","capcup":"\u2A47","capdot":"\u2A40","CapitalDifferentialD":"\u2145","caps":"\u2229\uFE00","caret":"\u2041","caron":"\u02C7","Cayleys":"\u212D","ccaps":"\u2A4D","Ccaron":"\u010C","ccaron":"\u010D","Ccedil":"\u00C7","ccedil":"\u00E7","Ccirc":"\u0108","ccirc":"\u0109","Cconint":"\u2230","ccups":"\u2A4C","ccupssm":"\u2A50","Cdot":"\u010A","cdot":"\u010B","cedil":"\u00B8","Cedilla":"\u00B8","cemptyv":"\u29B2","cent":"\u00A2","centerdot":"\u00B7","CenterDot":"\u00B7","cfr":"\uD835\uDD20","Cfr":"\u212D","CHcy":"\u0427","chcy":"\u0447","check":"\u2713","checkmark":"\u2713","Chi":"\u03A7","chi":"\u03C7","circ":"\u02C6","circeq":"\u2257","circlearrowleft":"\u21BA","circlearrowright":"\u21BB","circledast":"\u229B","circledcirc":"\u229A","circleddash":"\u229D","CircleDot":"\u2299","circledR":"\u00AE","circledS":"\u24C8","CircleMinus":"\u2296","CirclePlus":"\u2295","CircleTimes":"\u2297","cir":"\u25CB","cirE":"\u29C3","cire":"\u2257","cirfnint":"\u2A10","cirmid":"\u2AEF","cirscir":"\u29C2","ClockwiseContourIntegral":"\u2232","CloseCurlyDoubleQuote":"\u201D","CloseCurlyQuote":"\u2019","clubs":"\u2663","clubsuit":"\u2663","colon":":","Colon":"\u2237","Colone":"\u2A74","colone":"\u2254","coloneq":"\u2254","comma":",","commat":"@","comp":"\u2201","compfn":"\u2218","complement":"\u2201","complexes":"\u2102","cong":"\u2245","congdot":"\u2A6D","Congruent":"\u2261","conint":"\u222E","Conint":"\u222F","ContourIntegral":"\u222E","copf":"\uD835\uDD54","Copf":"\u2102","coprod":"\u2210","Coproduct":"\u2210","copy":"\u00A9","COPY":"\u00A9","copysr":"\u2117","CounterClockwiseContourIntegral":"\u2233","crarr":"\u21B5","cross":"\u2717","Cross":"\u2A2F","Cscr":"\uD835\uDC9E","cscr":"\uD835\uDCB8","csub":"\u2ACF","csube":"\u2AD1","csup":"\u2AD0","csupe":"\u2AD2","ctdot":"\u22EF","cudarrl":"\u2938","cudarrr":"\u2935","cuepr":"\u22DE","cuesc":"\u22DF","cularr":"\u21B6","cularrp":"\u293D","cupbrcap":"\u2A48","cupcap":"\u2A46","CupCap":"\u224D","cup":"\u222A","Cup":"\u22D3","cupcup":"\u2A4A","cupdot":"\u228D","cupor":"\u2A45","cups":"\u222A\uFE00","curarr":"\u21B7","curarrm":"\u293C","curlyeqprec":"\u22DE","curlyeqsucc":"\u22DF","curlyvee":"\u22CE","curlywedge":"\u22CF","curren":"\u00A4","curvearrowleft":"\u21B6","curvearrowright":"\u21B7","cuvee":"\u22CE","cuwed":"\u22CF","cwconint":"\u2232","cwint":"\u2231","cylcty":"\u232D","dagger":"\u2020","Dagger":"\u2021","daleth":"\u2138","darr":"\u2193","Darr":"\u21A1","dArr":"\u21D3","dash":"\u2010","Dashv":"\u2AE4","dashv":"\u22A3","dbkarow":"\u290F","dblac":"\u02DD","Dcaron":"\u010E","dcaron":"\u010F","Dcy":"\u0414","dcy":"\u0434","ddagger":"\u2021","ddarr":"\u21CA","DD":"\u2145","dd":"\u2146","DDotrahd":"\u2911","ddotseq":"\u2A77","deg":"\u00B0","Del":"\u2207","Delta":"\u0394","delta":"\u03B4","demptyv":"\u29B1","dfisht":"\u297F","Dfr":"\uD835\uDD07","dfr":"\uD835\uDD21","dHar":"\u2965","dharl":"\u21C3","dharr":"\u21C2","DiacriticalAcute":"\u00B4","DiacriticalDot":"\u02D9","DiacriticalDoubleAcute":"\u02DD","DiacriticalGrave":"`","DiacriticalTilde":"\u02DC","diam":"\u22C4","diamond":"\u22C4","Diamond":"\u22C4","diamondsuit":"\u2666","diams":"\u2666","die":"\u00A8","DifferentialD":"\u2146","digamma":"\u03DD","disin":"\u22F2","div":"\u00F7","divide":"\u00F7","divideontimes":"\u22C7","divonx":"\u22C7","DJcy":"\u0402","djcy":"\u0452","dlcorn":"\u231E","dlcrop":"\u230D","dollar":"$","Dopf":"\uD835\uDD3B","dopf":"\uD835\uDD55","Dot":"\u00A8","dot":"\u02D9","DotDot":"\u20DC","doteq":"\u2250","doteqdot":"\u2251","DotEqual":"\u2250","dotminus":"\u2238","dotplus":"\u2214","dotsquare":"\u22A1","doublebarwedge":"\u2306","DoubleContourIntegral":"\u222F","DoubleDot":"\u00A8","DoubleDownArrow":"\u21D3","DoubleLeftArrow":"\u21D0","DoubleLeftRightArrow":"\u21D4","DoubleLeftTee":"\u2AE4","DoubleLongLeftArrow":"\u27F8","DoubleLongLeftRightArrow":"\u27FA","DoubleLongRightArrow":"\u27F9","DoubleRightArrow":"\u21D2","DoubleRightTee":"\u22A8","DoubleUpArrow":"\u21D1","DoubleUpDownArrow":"\u21D5","DoubleVerticalBar":"\u2225","DownArrowBar":"\u2913","downarrow":"\u2193","DownArrow":"\u2193","Downarrow":"\u21D3","DownArrowUpArrow":"\u21F5","DownBreve":"\u0311","downdownarrows":"\u21CA","downharpoonleft":"\u21C3","downharpoonright":"\u21C2","DownLeftRightVector":"\u2950","DownLeftTeeVector":"\u295E","DownLeftVectorBar":"\u2956","DownLeftVector":"\u21BD","DownRightTeeVector":"\u295F","DownRightVectorBar":"\u2957","DownRightVector":"\u21C1","DownTeeArrow":"\u21A7","DownTee":"\u22A4","drbkarow":"\u2910","drcorn":"\u231F","drcrop":"\u230C","Dscr":"\uD835\uDC9F","dscr":"\uD835\uDCB9","DScy":"\u0405","dscy":"\u0455","dsol":"\u29F6","Dstrok":"\u0110","dstrok":"\u0111","dtdot":"\u22F1","dtri":"\u25BF","dtrif":"\u25BE","duarr":"\u21F5","duhar":"\u296F","dwangle":"\u29A6","DZcy":"\u040F","dzcy":"\u045F","dzigrarr":"\u27FF","Eacute":"\u00C9","eacute":"\u00E9","easter":"\u2A6E","Ecaron":"\u011A","ecaron":"\u011B","Ecirc":"\u00CA","ecirc":"\u00EA","ecir":"\u2256","ecolon":"\u2255","Ecy":"\u042D","ecy":"\u044D","eDDot":"\u2A77","Edot":"\u0116","edot":"\u0117","eDot":"\u2251","ee":"\u2147","efDot":"\u2252","Efr":"\uD835\uDD08","efr":"\uD835\uDD22","eg":"\u2A9A","Egrave":"\u00C8","egrave":"\u00E8","egs":"\u2A96","egsdot":"\u2A98","el":"\u2A99","Element":"\u2208","elinters":"\u23E7","ell":"\u2113","els":"\u2A95","elsdot":"\u2A97","Emacr":"\u0112","emacr":"\u0113","empty":"\u2205","emptyset":"\u2205","EmptySmallSquare":"\u25FB","emptyv":"\u2205","EmptyVerySmallSquare":"\u25AB","emsp13":"\u2004","emsp14":"\u2005","emsp":"\u2003","ENG":"\u014A","eng":"\u014B","ensp":"\u2002","Eogon":"\u0118","eogon":"\u0119","Eopf":"\uD835\uDD3C","eopf":"\uD835\uDD56","epar":"\u22D5","eparsl":"\u29E3","eplus":"\u2A71","epsi":"\u03B5","Epsilon":"\u0395","epsilon":"\u03B5","epsiv":"\u03F5","eqcirc":"\u2256","eqcolon":"\u2255","eqsim":"\u2242","eqslantgtr":"\u2A96","eqslantless":"\u2A95","Equal":"\u2A75","equals":"=","EqualTilde":"\u2242","equest":"\u225F","Equilibrium":"\u21CC","equiv":"\u2261","equivDD":"\u2A78","eqvparsl":"\u29E5","erarr":"\u2971","erDot":"\u2253","escr":"\u212F","Escr":"\u2130","esdot":"\u2250","Esim":"\u2A73","esim":"\u2242","Eta":"\u0397","eta":"\u03B7","ETH":"\u00D0","eth":"\u00F0","Euml":"\u00CB","euml":"\u00EB","euro":"\u20AC","excl":"!","exist":"\u2203","Exists":"\u2203","expectation":"\u2130","exponentiale":"\u2147","ExponentialE":"\u2147","fallingdotseq":"\u2252","Fcy":"\u0424","fcy":"\u0444","female":"\u2640","ffilig":"\uFB03","fflig":"\uFB00","ffllig":"\uFB04","Ffr":"\uD835\uDD09","ffr":"\uD835\uDD23","filig":"\uFB01","FilledSmallSquare":"\u25FC","FilledVerySmallSquare":"\u25AA","fjlig":"fj","flat":"\u266D","fllig":"\uFB02","fltns":"\u25B1","fnof":"\u0192","Fopf":"\uD835\uDD3D","fopf":"\uD835\uDD57","forall":"\u2200","ForAll":"\u2200","fork":"\u22D4","forkv":"\u2AD9","Fouriertrf":"\u2131","fpartint":"\u2A0D","frac12":"\u00BD","frac13":"\u2153","frac14":"\u00BC","frac15":"\u2155","frac16":"\u2159","frac18":"\u215B","frac23":"\u2154","frac25":"\u2156","frac34":"\u00BE","frac35":"\u2157","frac38":"\u215C","frac45":"\u2158","frac56":"\u215A","frac58":"\u215D","frac78":"\u215E","frasl":"\u2044","frown":"\u2322","fscr":"\uD835\uDCBB","Fscr":"\u2131","gacute":"\u01F5","Gamma":"\u0393","gamma":"\u03B3","Gammad":"\u03DC","gammad":"\u03DD","gap":"\u2A86","Gbreve":"\u011E","gbreve":"\u011F","Gcedil":"\u0122","Gcirc":"\u011C","gcirc":"\u011D","Gcy":"\u0413","gcy":"\u0433","Gdot":"\u0120","gdot":"\u0121","ge":"\u2265","gE":"\u2267","gEl":"\u2A8C","gel":"\u22DB","geq":"\u2265","geqq":"\u2267","geqslant":"\u2A7E","gescc":"\u2AA9","ges":"\u2A7E","gesdot":"\u2A80","gesdoto":"\u2A82","gesdotol":"\u2A84","gesl":"\u22DB\uFE00","gesles":"\u2A94","Gfr":"\uD835\uDD0A","gfr":"\uD835\uDD24","gg":"\u226B","Gg":"\u22D9","ggg":"\u22D9","gimel":"\u2137","GJcy":"\u0403","gjcy":"\u0453","gla":"\u2AA5","gl":"\u2277","glE":"\u2A92","glj":"\u2AA4","gnap":"\u2A8A","gnapprox":"\u2A8A","gne":"\u2A88","gnE":"\u2269","gneq":"\u2A88","gneqq":"\u2269","gnsim":"\u22E7","Gopf":"\uD835\uDD3E","gopf":"\uD835\uDD58","grave":"`","GreaterEqual":"\u2265","GreaterEqualLess":"\u22DB","GreaterFullEqual":"\u2267","GreaterGreater":"\u2AA2","GreaterLess":"\u2277","GreaterSlantEqual":"\u2A7E","GreaterTilde":"\u2273","Gscr":"\uD835\uDCA2","gscr":"\u210A","gsim":"\u2273","gsime":"\u2A8E","gsiml":"\u2A90","gtcc":"\u2AA7","gtcir":"\u2A7A","gt":">","GT":">","Gt":"\u226B","gtdot":"\u22D7","gtlPar":"\u2995","gtquest":"\u2A7C","gtrapprox":"\u2A86","gtrarr":"\u2978","gtrdot":"\u22D7","gtreqless":"\u22DB","gtreqqless":"\u2A8C","gtrless":"\u2277","gtrsim":"\u2273","gvertneqq":"\u2269\uFE00","gvnE":"\u2269\uFE00","Hacek":"\u02C7","hairsp":"\u200A","half":"\u00BD","hamilt":"\u210B","HARDcy":"\u042A","hardcy":"\u044A","harrcir":"\u2948","harr":"\u2194","hArr":"\u21D4","harrw":"\u21AD","Hat":"^","hbar":"\u210F","Hcirc":"\u0124","hcirc":"\u0125","hearts":"\u2665","heartsuit":"\u2665","hellip":"\u2026","hercon":"\u22B9","hfr":"\uD835\uDD25","Hfr":"\u210C","HilbertSpace":"\u210B","hksearow":"\u2925","hkswarow":"\u2926","hoarr":"\u21FF","homtht":"\u223B","hookleftarrow":"\u21A9","hookrightarrow":"\u21AA","hopf":"\uD835\uDD59","Hopf":"\u210D","horbar":"\u2015","HorizontalLine":"\u2500","hscr":"\uD835\uDCBD","Hscr":"\u210B","hslash":"\u210F","Hstrok":"\u0126","hstrok":"\u0127","HumpDownHump":"\u224E","HumpEqual":"\u224F","hybull":"\u2043","hyphen":"\u2010","Iacute":"\u00CD","iacute":"\u00ED","ic":"\u2063","Icirc":"\u00CE","icirc":"\u00EE","Icy":"\u0418","icy":"\u0438","Idot":"\u0130","IEcy":"\u0415","iecy":"\u0435","iexcl":"\u00A1","iff":"\u21D4","ifr":"\uD835\uDD26","Ifr":"\u2111","Igrave":"\u00CC","igrave":"\u00EC","ii":"\u2148","iiiint":"\u2A0C","iiint":"\u222D","iinfin":"\u29DC","iiota":"\u2129","IJlig":"\u0132","ijlig":"\u0133","Imacr":"\u012A","imacr":"\u012B","image":"\u2111","ImaginaryI":"\u2148","imagline":"\u2110","imagpart":"\u2111","imath":"\u0131","Im":"\u2111","imof":"\u22B7","imped":"\u01B5","Implies":"\u21D2","incare":"\u2105","in":"\u2208","infin":"\u221E","infintie":"\u29DD","inodot":"\u0131","intcal":"\u22BA","int":"\u222B","Int":"\u222C","integers":"\u2124","Integral":"\u222B","intercal":"\u22BA","Intersection":"\u22C2","intlarhk":"\u2A17","intprod":"\u2A3C","InvisibleComma":"\u2063","InvisibleTimes":"\u2062","IOcy":"\u0401","iocy":"\u0451","Iogon":"\u012E","iogon":"\u012F","Iopf":"\uD835\uDD40","iopf":"\uD835\uDD5A","Iota":"\u0399","iota":"\u03B9","iprod":"\u2A3C","iquest":"\u00BF","iscr":"\uD835\uDCBE","Iscr":"\u2110","isin":"\u2208","isindot":"\u22F5","isinE":"\u22F9","isins":"\u22F4","isinsv":"\u22F3","isinv":"\u2208","it":"\u2062","Itilde":"\u0128","itilde":"\u0129","Iukcy":"\u0406","iukcy":"\u0456","Iuml":"\u00CF","iuml":"\u00EF","Jcirc":"\u0134","jcirc":"\u0135","Jcy":"\u0419","jcy":"\u0439","Jfr":"\uD835\uDD0D","jfr":"\uD835\uDD27","jmath":"\u0237","Jopf":"\uD835\uDD41","jopf":"\uD835\uDD5B","Jscr":"\uD835\uDCA5","jscr":"\uD835\uDCBF","Jsercy":"\u0408","jsercy":"\u0458","Jukcy":"\u0404","jukcy":"\u0454","Kappa":"\u039A","kappa":"\u03BA","kappav":"\u03F0","Kcedil":"\u0136","kcedil":"\u0137","Kcy":"\u041A","kcy":"\u043A","Kfr":"\uD835\uDD0E","kfr":"\uD835\uDD28","kgreen":"\u0138","KHcy":"\u0425","khcy":"\u0445","KJcy":"\u040C","kjcy":"\u045C","Kopf":"\uD835\uDD42","kopf":"\uD835\uDD5C","Kscr":"\uD835\uDCA6","kscr":"\uD835\uDCC0","lAarr":"\u21DA","Lacute":"\u0139","lacute":"\u013A","laemptyv":"\u29B4","lagran":"\u2112","Lambda":"\u039B","lambda":"\u03BB","lang":"\u27E8","Lang":"\u27EA","langd":"\u2991","langle":"\u27E8","lap":"\u2A85","Laplacetrf":"\u2112","laquo":"\u00AB","larrb":"\u21E4","larrbfs":"\u291F","larr":"\u2190","Larr":"\u219E","lArr":"\u21D0","larrfs":"\u291D","larrhk":"\u21A9","larrlp":"\u21AB","larrpl":"\u2939","larrsim":"\u2973","larrtl":"\u21A2","latail":"\u2919","lAtail":"\u291B","lat":"\u2AAB","late":"\u2AAD","lates":"\u2AAD\uFE00","lbarr":"\u290C","lBarr":"\u290E","lbbrk":"\u2772","lbrace":"{","lbrack":"[","lbrke":"\u298B","lbrksld":"\u298F","lbrkslu":"\u298D","Lcaron":"\u013D","lcaron":"\u013E","Lcedil":"\u013B","lcedil":"\u013C","lceil":"\u2308","lcub":"{","Lcy":"\u041B","lcy":"\u043B","ldca":"\u2936","ldquo":"\u201C","ldquor":"\u201E","ldrdhar":"\u2967","ldrushar":"\u294B","ldsh":"\u21B2","le":"\u2264","lE":"\u2266","LeftAngleBracket":"\u27E8","LeftArrowBar":"\u21E4","leftarrow":"\u2190","LeftArrow":"\u2190","Leftarrow":"\u21D0","LeftArrowRightArrow":"\u21C6","leftarrowtail":"\u21A2","LeftCeiling":"\u2308","LeftDoubleBracket":"\u27E6","LeftDownTeeVector":"\u2961","LeftDownVectorBar":"\u2959","LeftDownVector":"\u21C3","LeftFloor":"\u230A","leftharpoondown":"\u21BD","leftharpoonup":"\u21BC","leftleftarrows":"\u21C7","leftrightarrow":"\u2194","LeftRightArrow":"\u2194","Leftrightarrow":"\u21D4","leftrightarrows":"\u21C6","leftrightharpoons":"\u21CB","leftrightsquigarrow":"\u21AD","LeftRightVector":"\u294E","LeftTeeArrow":"\u21A4","LeftTee":"\u22A3","LeftTeeVector":"\u295A","leftthreetimes":"\u22CB","LeftTriangleBar":"\u29CF","LeftTriangle":"\u22B2","LeftTriangleEqual":"\u22B4","LeftUpDownVector":"\u2951","LeftUpTeeVector":"\u2960","LeftUpVectorBar":"\u2958","LeftUpVector":"\u21BF","LeftVectorBar":"\u2952","LeftVector":"\u21BC","lEg":"\u2A8B","leg":"\u22DA","leq":"\u2264","leqq":"\u2266","leqslant":"\u2A7D","lescc":"\u2AA8","les":"\u2A7D","lesdot":"\u2A7F","lesdoto":"\u2A81","lesdotor":"\u2A83","lesg":"\u22DA\uFE00","lesges":"\u2A93","lessapprox":"\u2A85","lessdot":"\u22D6","lesseqgtr":"\u22DA","lesseqqgtr":"\u2A8B","LessEqualGreater":"\u22DA","LessFullEqual":"\u2266","LessGreater":"\u2276","lessgtr":"\u2276","LessLess":"\u2AA1","lesssim":"\u2272","LessSlantEqual":"\u2A7D","LessTilde":"\u2272","lfisht":"\u297C","lfloor":"\u230A","Lfr":"\uD835\uDD0F","lfr":"\uD835\uDD29","lg":"\u2276","lgE":"\u2A91","lHar":"\u2962","lhard":"\u21BD","lharu":"\u21BC","lharul":"\u296A","lhblk":"\u2584","LJcy":"\u0409","ljcy":"\u0459","llarr":"\u21C7","ll":"\u226A","Ll":"\u22D8","llcorner":"\u231E","Lleftarrow":"\u21DA","llhard":"\u296B","lltri":"\u25FA","Lmidot":"\u013F","lmidot":"\u0140","lmoustache":"\u23B0","lmoust":"\u23B0","lnap":"\u2A89","lnapprox":"\u2A89","lne":"\u2A87","lnE":"\u2268","lneq":"\u2A87","lneqq":"\u2268","lnsim":"\u22E6","loang":"\u27EC","loarr":"\u21FD","lobrk":"\u27E6","longleftarrow":"\u27F5","LongLeftArrow":"\u27F5","Longleftarrow":"\u27F8","longleftrightarrow":"\u27F7","LongLeftRightArrow":"\u27F7","Longleftrightarrow":"\u27FA","longmapsto":"\u27FC","longrightarrow":"\u27F6","LongRightArrow":"\u27F6","Longrightarrow":"\u27F9","looparrowleft":"\u21AB","looparrowright":"\u21AC","lopar":"\u2985","Lopf":"\uD835\uDD43","lopf":"\uD835\uDD5D","loplus":"\u2A2D","lotimes":"\u2A34","lowast":"\u2217","lowbar":"_","LowerLeftArrow":"\u2199","LowerRightArrow":"\u2198","loz":"\u25CA","lozenge":"\u25CA","lozf":"\u29EB","lpar":"(","lparlt":"\u2993","lrarr":"\u21C6","lrcorner":"\u231F","lrhar":"\u21CB","lrhard":"\u296D","lrm":"\u200E","lrtri":"\u22BF","lsaquo":"\u2039","lscr":"\uD835\uDCC1","Lscr":"\u2112","lsh":"\u21B0","Lsh":"\u21B0","lsim":"\u2272","lsime":"\u2A8D","lsimg":"\u2A8F","lsqb":"[","lsquo":"\u2018","lsquor":"\u201A","Lstrok":"\u0141","lstrok":"\u0142","ltcc":"\u2AA6","ltcir":"\u2A79","lt":"<","LT":"<","Lt":"\u226A","ltdot":"\u22D6","lthree":"\u22CB","ltimes":"\u22C9","ltlarr":"\u2976","ltquest":"\u2A7B","ltri":"\u25C3","ltrie":"\u22B4","ltrif":"\u25C2","ltrPar":"\u2996","lurdshar":"\u294A","luruhar":"\u2966","lvertneqq":"\u2268\uFE00","lvnE":"\u2268\uFE00","macr":"\u00AF","male":"\u2642","malt":"\u2720","maltese":"\u2720","Map":"\u2905","map":"\u21A6","mapsto":"\u21A6","mapstodown":"\u21A7","mapstoleft":"\u21A4","mapstoup":"\u21A5","marker":"\u25AE","mcomma":"\u2A29","Mcy":"\u041C","mcy":"\u043C","mdash":"\u2014","mDDot":"\u223A","measuredangle":"\u2221","MediumSpace":"\u205F","Mellintrf":"\u2133","Mfr":"\uD835\uDD10","mfr":"\uD835\uDD2A","mho":"\u2127","micro":"\u00B5","midast":"*","midcir":"\u2AF0","mid":"\u2223","middot":"\u00B7","minusb":"\u229F","minus":"\u2212","minusd":"\u2238","minusdu":"\u2A2A","MinusPlus":"\u2213","mlcp":"\u2ADB","mldr":"\u2026","mnplus":"\u2213","models":"\u22A7","Mopf":"\uD835\uDD44","mopf":"\uD835\uDD5E","mp":"\u2213","mscr":"\uD835\uDCC2","Mscr":"\u2133","mstpos":"\u223E","Mu":"\u039C","mu":"\u03BC","multimap":"\u22B8","mumap":"\u22B8","nabla":"\u2207","Nacute":"\u0143","nacute":"\u0144","nang":"\u2220\u20D2","nap":"\u2249","napE":"\u2A70\u0338","napid":"\u224B\u0338","napos":"\u0149","napprox":"\u2249","natural":"\u266E","naturals":"\u2115","natur":"\u266E","nbsp":"\u00A0","nbump":"\u224E\u0338","nbumpe":"\u224F\u0338","ncap":"\u2A43","Ncaron":"\u0147","ncaron":"\u0148","Ncedil":"\u0145","ncedil":"\u0146","ncong":"\u2247","ncongdot":"\u2A6D\u0338","ncup":"\u2A42","Ncy":"\u041D","ncy":"\u043D","ndash":"\u2013","nearhk":"\u2924","nearr":"\u2197","neArr":"\u21D7","nearrow":"\u2197","ne":"\u2260","nedot":"\u2250\u0338","NegativeMediumSpace":"\u200B","NegativeThickSpace":"\u200B","NegativeThinSpace":"\u200B","NegativeVeryThinSpace":"\u200B","nequiv":"\u2262","nesear":"\u2928","nesim":"\u2242\u0338","NestedGreaterGreater":"\u226B","NestedLessLess":"\u226A","NewLine":"\n","nexist":"\u2204","nexists":"\u2204","Nfr":"\uD835\uDD11","nfr":"\uD835\uDD2B","ngE":"\u2267\u0338","nge":"\u2271","ngeq":"\u2271","ngeqq":"\u2267\u0338","ngeqslant":"\u2A7E\u0338","nges":"\u2A7E\u0338","nGg":"\u22D9\u0338","ngsim":"\u2275","nGt":"\u226B\u20D2","ngt":"\u226F","ngtr":"\u226F","nGtv":"\u226B\u0338","nharr":"\u21AE","nhArr":"\u21CE","nhpar":"\u2AF2","ni":"\u220B","nis":"\u22FC","nisd":"\u22FA","niv":"\u220B","NJcy":"\u040A","njcy":"\u045A","nlarr":"\u219A","nlArr":"\u21CD","nldr":"\u2025","nlE":"\u2266\u0338","nle":"\u2270","nleftarrow":"\u219A","nLeftarrow":"\u21CD","nleftrightarrow":"\u21AE","nLeftrightarrow":"\u21CE","nleq":"\u2270","nleqq":"\u2266\u0338","nleqslant":"\u2A7D\u0338","nles":"\u2A7D\u0338","nless":"\u226E","nLl":"\u22D8\u0338","nlsim":"\u2274","nLt":"\u226A\u20D2","nlt":"\u226E","nltri":"\u22EA","nltrie":"\u22EC","nLtv":"\u226A\u0338","nmid":"\u2224","NoBreak":"\u2060","NonBreakingSpace":"\u00A0","nopf":"\uD835\uDD5F","Nopf":"\u2115","Not":"\u2AEC","not":"\u00AC","NotCongruent":"\u2262","NotCupCap":"\u226D","NotDoubleVerticalBar":"\u2226","NotElement":"\u2209","NotEqual":"\u2260","NotEqualTilde":"\u2242\u0338","NotExists":"\u2204","NotGreater":"\u226F","NotGreaterEqual":"\u2271","NotGreaterFullEqual":"\u2267\u0338","NotGreaterGreater":"\u226B\u0338","NotGreaterLess":"\u2279","NotGreaterSlantEqual":"\u2A7E\u0338","NotGreaterTilde":"\u2275","NotHumpDownHump":"\u224E\u0338","NotHumpEqual":"\u224F\u0338","notin":"\u2209","notindot":"\u22F5\u0338","notinE":"\u22F9\u0338","notinva":"\u2209","notinvb":"\u22F7","notinvc":"\u22F6","NotLeftTriangleBar":"\u29CF\u0338","NotLeftTriangle":"\u22EA","NotLeftTriangleEqual":"\u22EC","NotLess":"\u226E","NotLessEqual":"\u2270","NotLessGreater":"\u2278","NotLessLess":"\u226A\u0338","NotLessSlantEqual":"\u2A7D\u0338","NotLessTilde":"\u2274","NotNestedGreaterGreater":"\u2AA2\u0338","NotNestedLessLess":"\u2AA1\u0338","notni":"\u220C","notniva":"\u220C","notnivb":"\u22FE","notnivc":"\u22FD","NotPrecedes":"\u2280","NotPrecedesEqual":"\u2AAF\u0338","NotPrecedesSlantEqual":"\u22E0","NotReverseElement":"\u220C","NotRightTriangleBar":"\u29D0\u0338","NotRightTriangle":"\u22EB","NotRightTriangleEqual":"\u22ED","NotSquareSubset":"\u228F\u0338","NotSquareSubsetEqual":"\u22E2","NotSquareSuperset":"\u2290\u0338","NotSquareSupersetEqual":"\u22E3","NotSubset":"\u2282\u20D2","NotSubsetEqual":"\u2288","NotSucceeds":"\u2281","NotSucceedsEqual":"\u2AB0\u0338","NotSucceedsSlantEqual":"\u22E1","NotSucceedsTilde":"\u227F\u0338","NotSuperset":"\u2283\u20D2","NotSupersetEqual":"\u2289","NotTilde":"\u2241","NotTildeEqual":"\u2244","NotTildeFullEqual":"\u2247","NotTildeTilde":"\u2249","NotVerticalBar":"\u2224","nparallel":"\u2226","npar":"\u2226","nparsl":"\u2AFD\u20E5","npart":"\u2202\u0338","npolint":"\u2A14","npr":"\u2280","nprcue":"\u22E0","nprec":"\u2280","npreceq":"\u2AAF\u0338","npre":"\u2AAF\u0338","nrarrc":"\u2933\u0338","nrarr":"\u219B","nrArr":"\u21CF","nrarrw":"\u219D\u0338","nrightarrow":"\u219B","nRightarrow":"\u21CF","nrtri":"\u22EB","nrtrie":"\u22ED","nsc":"\u2281","nsccue":"\u22E1","nsce":"\u2AB0\u0338","Nscr":"\uD835\uDCA9","nscr":"\uD835\uDCC3","nshortmid":"\u2224","nshortparallel":"\u2226","nsim":"\u2241","nsime":"\u2244","nsimeq":"\u2244","nsmid":"\u2224","nspar":"\u2226","nsqsube":"\u22E2","nsqsupe":"\u22E3","nsub":"\u2284","nsubE":"\u2AC5\u0338","nsube":"\u2288","nsubset":"\u2282\u20D2","nsubseteq":"\u2288","nsubseteqq":"\u2AC5\u0338","nsucc":"\u2281","nsucceq":"\u2AB0\u0338","nsup":"\u2285","nsupE":"\u2AC6\u0338","nsupe":"\u2289","nsupset":"\u2283\u20D2","nsupseteq":"\u2289","nsupseteqq":"\u2AC6\u0338","ntgl":"\u2279","Ntilde":"\u00D1","ntilde":"\u00F1","ntlg":"\u2278","ntriangleleft":"\u22EA","ntrianglelefteq":"\u22EC","ntriangleright":"\u22EB","ntrianglerighteq":"\u22ED","Nu":"\u039D","nu":"\u03BD","num":"#","numero":"\u2116","numsp":"\u2007","nvap":"\u224D\u20D2","nvdash":"\u22AC","nvDash":"\u22AD","nVdash":"\u22AE","nVDash":"\u22AF","nvge":"\u2265\u20D2","nvgt":">\u20D2","nvHarr":"\u2904","nvinfin":"\u29DE","nvlArr":"\u2902","nvle":"\u2264\u20D2","nvlt":"<\u20D2","nvltrie":"\u22B4\u20D2","nvrArr":"\u2903","nvrtrie":"\u22B5\u20D2","nvsim":"\u223C\u20D2","nwarhk":"\u2923","nwarr":"\u2196","nwArr":"\u21D6","nwarrow":"\u2196","nwnear":"\u2927","Oacute":"\u00D3","oacute":"\u00F3","oast":"\u229B","Ocirc":"\u00D4","ocirc":"\u00F4","ocir":"\u229A","Ocy":"\u041E","ocy":"\u043E","odash":"\u229D","Odblac":"\u0150","odblac":"\u0151","odiv":"\u2A38","odot":"\u2299","odsold":"\u29BC","OElig":"\u0152","oelig":"\u0153","ofcir":"\u29BF","Ofr":"\uD835\uDD12","ofr":"\uD835\uDD2C","ogon":"\u02DB","Ograve":"\u00D2","ograve":"\u00F2","ogt":"\u29C1","ohbar":"\u29B5","ohm":"\u03A9","oint":"\u222E","olarr":"\u21BA","olcir":"\u29BE","olcross":"\u29BB","oline":"\u203E","olt":"\u29C0","Omacr":"\u014C","omacr":"\u014D","Omega":"\u03A9","omega":"\u03C9","Omicron":"\u039F","omicron":"\u03BF","omid":"\u29B6","ominus":"\u2296","Oopf":"\uD835\uDD46","oopf":"\uD835\uDD60","opar":"\u29B7","OpenCurlyDoubleQuote":"\u201C","OpenCurlyQuote":"\u2018","operp":"\u29B9","oplus":"\u2295","orarr":"\u21BB","Or":"\u2A54","or":"\u2228","ord":"\u2A5D","order":"\u2134","orderof":"\u2134","ordf":"\u00AA","ordm":"\u00BA","origof":"\u22B6","oror":"\u2A56","orslope":"\u2A57","orv":"\u2A5B","oS":"\u24C8","Oscr":"\uD835\uDCAA","oscr":"\u2134","Oslash":"\u00D8","oslash":"\u00F8","osol":"\u2298","Otilde":"\u00D5","otilde":"\u00F5","otimesas":"\u2A36","Otimes":"\u2A37","otimes":"\u2297","Ouml":"\u00D6","ouml":"\u00F6","ovbar":"\u233D","OverBar":"\u203E","OverBrace":"\u23DE","OverBracket":"\u23B4","OverParenthesis":"\u23DC","para":"\u00B6","parallel":"\u2225","par":"\u2225","parsim":"\u2AF3","parsl":"\u2AFD","part":"\u2202","PartialD":"\u2202","Pcy":"\u041F","pcy":"\u043F","percnt":"%","period":".","permil":"\u2030","perp":"\u22A5","pertenk":"\u2031","Pfr":"\uD835\uDD13","pfr":"\uD835\uDD2D","Phi":"\u03A6","phi":"\u03C6","phiv":"\u03D5","phmmat":"\u2133","phone":"\u260E","Pi":"\u03A0","pi":"\u03C0","pitchfork":"\u22D4","piv":"\u03D6","planck":"\u210F","planckh":"\u210E","plankv":"\u210F","plusacir":"\u2A23","plusb":"\u229E","pluscir":"\u2A22","plus":"+","plusdo":"\u2214","plusdu":"\u2A25","pluse":"\u2A72","PlusMinus":"\u00B1","plusmn":"\u00B1","plussim":"\u2A26","plustwo":"\u2A27","pm":"\u00B1","Poincareplane":"\u210C","pointint":"\u2A15","popf":"\uD835\uDD61","Popf":"\u2119","pound":"\u00A3","prap":"\u2AB7","Pr":"\u2ABB","pr":"\u227A","prcue":"\u227C","precapprox":"\u2AB7","prec":"\u227A","preccurlyeq":"\u227C","Precedes":"\u227A","PrecedesEqual":"\u2AAF","PrecedesSlantEqual":"\u227C","PrecedesTilde":"\u227E","preceq":"\u2AAF","precnapprox":"\u2AB9","precneqq":"\u2AB5","precnsim":"\u22E8","pre":"\u2AAF","prE":"\u2AB3","precsim":"\u227E","prime":"\u2032","Prime":"\u2033","primes":"\u2119","prnap":"\u2AB9","prnE":"\u2AB5","prnsim":"\u22E8","prod":"\u220F","Product":"\u220F","profalar":"\u232E","profline":"\u2312","profsurf":"\u2313","prop":"\u221D","Proportional":"\u221D","Proportion":"\u2237","propto":"\u221D","prsim":"\u227E","prurel":"\u22B0","Pscr":"\uD835\uDCAB","pscr":"\uD835\uDCC5","Psi":"\u03A8","psi":"\u03C8","puncsp":"\u2008","Qfr":"\uD835\uDD14","qfr":"\uD835\uDD2E","qint":"\u2A0C","qopf":"\uD835\uDD62","Qopf":"\u211A","qprime":"\u2057","Qscr":"\uD835\uDCAC","qscr":"\uD835\uDCC6","quaternions":"\u210D","quatint":"\u2A16","quest":"?","questeq":"\u225F","quot":"\"","QUOT":"\"","rAarr":"\u21DB","race":"\u223D\u0331","Racute":"\u0154","racute":"\u0155","radic":"\u221A","raemptyv":"\u29B3","rang":"\u27E9","Rang":"\u27EB","rangd":"\u2992","range":"\u29A5","rangle":"\u27E9","raquo":"\u00BB","rarrap":"\u2975","rarrb":"\u21E5","rarrbfs":"\u2920","rarrc":"\u2933","rarr":"\u2192","Rarr":"\u21A0","rArr":"\u21D2","rarrfs":"\u291E","rarrhk":"\u21AA","rarrlp":"\u21AC","rarrpl":"\u2945","rarrsim":"\u2974","Rarrtl":"\u2916","rarrtl":"\u21A3","rarrw":"\u219D","ratail":"\u291A","rAtail":"\u291C","ratio":"\u2236","rationals":"\u211A","rbarr":"\u290D","rBarr":"\u290F","RBarr":"\u2910","rbbrk":"\u2773","rbrace":"}","rbrack":"]","rbrke":"\u298C","rbrksld":"\u298E","rbrkslu":"\u2990","Rcaron":"\u0158","rcaron":"\u0159","Rcedil":"\u0156","rcedil":"\u0157","rceil":"\u2309","rcub":"}","Rcy":"\u0420","rcy":"\u0440","rdca":"\u2937","rdldhar":"\u2969","rdquo":"\u201D","rdquor":"\u201D","rdsh":"\u21B3","real":"\u211C","realine":"\u211B","realpart":"\u211C","reals":"\u211D","Re":"\u211C","rect":"\u25AD","reg":"\u00AE","REG":"\u00AE","ReverseElement":"\u220B","ReverseEquilibrium":"\u21CB","ReverseUpEquilibrium":"\u296F","rfisht":"\u297D","rfloor":"\u230B","rfr":"\uD835\uDD2F","Rfr":"\u211C","rHar":"\u2964","rhard":"\u21C1","rharu":"\u21C0","rharul":"\u296C","Rho":"\u03A1","rho":"\u03C1","rhov":"\u03F1","RightAngleBracket":"\u27E9","RightArrowBar":"\u21E5","rightarrow":"\u2192","RightArrow":"\u2192","Rightarrow":"\u21D2","RightArrowLeftArrow":"\u21C4","rightarrowtail":"\u21A3","RightCeiling":"\u2309","RightDoubleBracket":"\u27E7","RightDownTeeVector":"\u295D","RightDownVectorBar":"\u2955","RightDownVector":"\u21C2","RightFloor":"\u230B","rightharpoondown":"\u21C1","rightharpoonup":"\u21C0","rightleftarrows":"\u21C4","rightleftharpoons":"\u21CC","rightrightarrows":"\u21C9","rightsquigarrow":"\u219D","RightTeeArrow":"\u21A6","RightTee":"\u22A2","RightTeeVector":"\u295B","rightthreetimes":"\u22CC","RightTriangleBar":"\u29D0","RightTriangle":"\u22B3","RightTriangleEqual":"\u22B5","RightUpDownVector":"\u294F","RightUpTeeVector":"\u295C","RightUpVectorBar":"\u2954","RightUpVector":"\u21BE","RightVectorBar":"\u2953","RightVector":"\u21C0","ring":"\u02DA","risingdotseq":"\u2253","rlarr":"\u21C4","rlhar":"\u21CC","rlm":"\u200F","rmoustache":"\u23B1","rmoust":"\u23B1","rnmid":"\u2AEE","roang":"\u27ED","roarr":"\u21FE","robrk":"\u27E7","ropar":"\u2986","ropf":"\uD835\uDD63","Ropf":"\u211D","roplus":"\u2A2E","rotimes":"\u2A35","RoundImplies":"\u2970","rpar":")","rpargt":"\u2994","rppolint":"\u2A12","rrarr":"\u21C9","Rrightarrow":"\u21DB","rsaquo":"\u203A","rscr":"\uD835\uDCC7","Rscr":"\u211B","rsh":"\u21B1","Rsh":"\u21B1","rsqb":"]","rsquo":"\u2019","rsquor":"\u2019","rthree":"\u22CC","rtimes":"\u22CA","rtri":"\u25B9","rtrie":"\u22B5","rtrif":"\u25B8","rtriltri":"\u29CE","RuleDelayed":"\u29F4","ruluhar":"\u2968","rx":"\u211E","Sacute":"\u015A","sacute":"\u015B","sbquo":"\u201A","scap":"\u2AB8","Scaron":"\u0160","scaron":"\u0161","Sc":"\u2ABC","sc":"\u227B","sccue":"\u227D","sce":"\u2AB0","scE":"\u2AB4","Scedil":"\u015E","scedil":"\u015F","Scirc":"\u015C","scirc":"\u015D","scnap":"\u2ABA","scnE":"\u2AB6","scnsim":"\u22E9","scpolint":"\u2A13","scsim":"\u227F","Scy":"\u0421","scy":"\u0441","sdotb":"\u22A1","sdot":"\u22C5","sdote":"\u2A66","searhk":"\u2925","searr":"\u2198","seArr":"\u21D8","searrow":"\u2198","sect":"\u00A7","semi":";","seswar":"\u2929","setminus":"\u2216","setmn":"\u2216","sext":"\u2736","Sfr":"\uD835\uDD16","sfr":"\uD835\uDD30","sfrown":"\u2322","sharp":"\u266F","SHCHcy":"\u0429","shchcy":"\u0449","SHcy":"\u0428","shcy":"\u0448","ShortDownArrow":"\u2193","ShortLeftArrow":"\u2190","shortmid":"\u2223","shortparallel":"\u2225","ShortRightArrow":"\u2192","ShortUpArrow":"\u2191","shy":"\u00AD","Sigma":"\u03A3","sigma":"\u03C3","sigmaf":"\u03C2","sigmav":"\u03C2","sim":"\u223C","simdot":"\u2A6A","sime":"\u2243","simeq":"\u2243","simg":"\u2A9E","simgE":"\u2AA0","siml":"\u2A9D","simlE":"\u2A9F","simne":"\u2246","simplus":"\u2A24","simrarr":"\u2972","slarr":"\u2190","SmallCircle":"\u2218","smallsetminus":"\u2216","smashp":"\u2A33","smeparsl":"\u29E4","smid":"\u2223","smile":"\u2323","smt":"\u2AAA","smte":"\u2AAC","smtes":"\u2AAC\uFE00","SOFTcy":"\u042C","softcy":"\u044C","solbar":"\u233F","solb":"\u29C4","sol":"/","Sopf":"\uD835\uDD4A","sopf":"\uD835\uDD64","spades":"\u2660","spadesuit":"\u2660","spar":"\u2225","sqcap":"\u2293","sqcaps":"\u2293\uFE00","sqcup":"\u2294","sqcups":"\u2294\uFE00","Sqrt":"\u221A","sqsub":"\u228F","sqsube":"\u2291","sqsubset":"\u228F","sqsubseteq":"\u2291","sqsup":"\u2290","sqsupe":"\u2292","sqsupset":"\u2290","sqsupseteq":"\u2292","square":"\u25A1","Square":"\u25A1","SquareIntersection":"\u2293","SquareSubset":"\u228F","SquareSubsetEqual":"\u2291","SquareSuperset":"\u2290","SquareSupersetEqual":"\u2292","SquareUnion":"\u2294","squarf":"\u25AA","squ":"\u25A1","squf":"\u25AA","srarr":"\u2192","Sscr":"\uD835\uDCAE","sscr":"\uD835\uDCC8","ssetmn":"\u2216","ssmile":"\u2323","sstarf":"\u22C6","Star":"\u22C6","star":"\u2606","starf":"\u2605","straightepsilon":"\u03F5","straightphi":"\u03D5","strns":"\u00AF","sub":"\u2282","Sub":"\u22D0","subdot":"\u2ABD","subE":"\u2AC5","sube":"\u2286","subedot":"\u2AC3","submult":"\u2AC1","subnE":"\u2ACB","subne":"\u228A","subplus":"\u2ABF","subrarr":"\u2979","subset":"\u2282","Subset":"\u22D0","subseteq":"\u2286","subseteqq":"\u2AC5","SubsetEqual":"\u2286","subsetneq":"\u228A","subsetneqq":"\u2ACB","subsim":"\u2AC7","subsub":"\u2AD5","subsup":"\u2AD3","succapprox":"\u2AB8","succ":"\u227B","succcurlyeq":"\u227D","Succeeds":"\u227B","SucceedsEqual":"\u2AB0","SucceedsSlantEqual":"\u227D","SucceedsTilde":"\u227F","succeq":"\u2AB0","succnapprox":"\u2ABA","succneqq":"\u2AB6","succnsim":"\u22E9","succsim":"\u227F","SuchThat":"\u220B","sum":"\u2211","Sum":"\u2211","sung":"\u266A","sup1":"\u00B9","sup2":"\u00B2","sup3":"\u00B3","sup":"\u2283","Sup":"\u22D1","supdot":"\u2ABE","supdsub":"\u2AD8","supE":"\u2AC6","supe":"\u2287","supedot":"\u2AC4","Superset":"\u2283","SupersetEqual":"\u2287","suphsol":"\u27C9","suphsub":"\u2AD7","suplarr":"\u297B","supmult":"\u2AC2","supnE":"\u2ACC","supne":"\u228B","supplus":"\u2AC0","supset":"\u2283","Supset":"\u22D1","supseteq":"\u2287","supseteqq":"\u2AC6","supsetneq":"\u228B","supsetneqq":"\u2ACC","supsim":"\u2AC8","supsub":"\u2AD4","supsup":"\u2AD6","swarhk":"\u2926","swarr":"\u2199","swArr":"\u21D9","swarrow":"\u2199","swnwar":"\u292A","szlig":"\u00DF","Tab":"\t","target":"\u2316","Tau":"\u03A4","tau":"\u03C4","tbrk":"\u23B4","Tcaron":"\u0164","tcaron":"\u0165","Tcedil":"\u0162","tcedil":"\u0163","Tcy":"\u0422","tcy":"\u0442","tdot":"\u20DB","telrec":"\u2315","Tfr":"\uD835\uDD17","tfr":"\uD835\uDD31","there4":"\u2234","therefore":"\u2234","Therefore":"\u2234","Theta":"\u0398","theta":"\u03B8","thetasym":"\u03D1","thetav":"\u03D1","thickapprox":"\u2248","thicksim":"\u223C","ThickSpace":"\u205F\u200A","ThinSpace":"\u2009","thinsp":"\u2009","thkap":"\u2248","thksim":"\u223C","THORN":"\u00DE","thorn":"\u00FE","tilde":"\u02DC","Tilde":"\u223C","TildeEqual":"\u2243","TildeFullEqual":"\u2245","TildeTilde":"\u2248","timesbar":"\u2A31","timesb":"\u22A0","times":"\u00D7","timesd":"\u2A30","tint":"\u222D","toea":"\u2928","topbot":"\u2336","topcir":"\u2AF1","top":"\u22A4","Topf":"\uD835\uDD4B","topf":"\uD835\uDD65","topfork":"\u2ADA","tosa":"\u2929","tprime":"\u2034","trade":"\u2122","TRADE":"\u2122","triangle":"\u25B5","triangledown":"\u25BF","triangleleft":"\u25C3","trianglelefteq":"\u22B4","triangleq":"\u225C","triangleright":"\u25B9","trianglerighteq":"\u22B5","tridot":"\u25EC","trie":"\u225C","triminus":"\u2A3A","TripleDot":"\u20DB","triplus":"\u2A39","trisb":"\u29CD","tritime":"\u2A3B","trpezium":"\u23E2","Tscr":"\uD835\uDCAF","tscr":"\uD835\uDCC9","TScy":"\u0426","tscy":"\u0446","TSHcy":"\u040B","tshcy":"\u045B","Tstrok":"\u0166","tstrok":"\u0167","twixt":"\u226C","twoheadleftarrow":"\u219E","twoheadrightarrow":"\u21A0","Uacute":"\u00DA","uacute":"\u00FA","uarr":"\u2191","Uarr":"\u219F","uArr":"\u21D1","Uarrocir":"\u2949","Ubrcy":"\u040E","ubrcy":"\u045E","Ubreve":"\u016C","ubreve":"\u016D","Ucirc":"\u00DB","ucirc":"\u00FB","Ucy":"\u0423","ucy":"\u0443","udarr":"\u21C5","Udblac":"\u0170","udblac":"\u0171","udhar":"\u296E","ufisht":"\u297E","Ufr":"\uD835\uDD18","ufr":"\uD835\uDD32","Ugrave":"\u00D9","ugrave":"\u00F9","uHar":"\u2963","uharl":"\u21BF","uharr":"\u21BE","uhblk":"\u2580","ulcorn":"\u231C","ulcorner":"\u231C","ulcrop":"\u230F","ultri":"\u25F8","Umacr":"\u016A","umacr":"\u016B","uml":"\u00A8","UnderBar":"_","UnderBrace":"\u23DF","UnderBracket":"\u23B5","UnderParenthesis":"\u23DD","Union":"\u22C3","UnionPlus":"\u228E","Uogon":"\u0172","uogon":"\u0173","Uopf":"\uD835\uDD4C","uopf":"\uD835\uDD66","UpArrowBar":"\u2912","uparrow":"\u2191","UpArrow":"\u2191","Uparrow":"\u21D1","UpArrowDownArrow":"\u21C5","updownarrow":"\u2195","UpDownArrow":"\u2195","Updownarrow":"\u21D5","UpEquilibrium":"\u296E","upharpoonleft":"\u21BF","upharpoonright":"\u21BE","uplus":"\u228E","UpperLeftArrow":"\u2196","UpperRightArrow":"\u2197","upsi":"\u03C5","Upsi":"\u03D2","upsih":"\u03D2","Upsilon":"\u03A5","upsilon":"\u03C5","UpTeeArrow":"\u21A5","UpTee":"\u22A5","upuparrows":"\u21C8","urcorn":"\u231D","urcorner":"\u231D","urcrop":"\u230E","Uring":"\u016E","uring":"\u016F","urtri":"\u25F9","Uscr":"\uD835\uDCB0","uscr":"\uD835\uDCCA","utdot":"\u22F0","Utilde":"\u0168","utilde":"\u0169","utri":"\u25B5","utrif":"\u25B4","uuarr":"\u21C8","Uuml":"\u00DC","uuml":"\u00FC","uwangle":"\u29A7","vangrt":"\u299C","varepsilon":"\u03F5","varkappa":"\u03F0","varnothing":"\u2205","varphi":"\u03D5","varpi":"\u03D6","varpropto":"\u221D","varr":"\u2195","vArr":"\u21D5","varrho":"\u03F1","varsigma":"\u03C2","varsubsetneq":"\u228A\uFE00","varsubsetneqq":"\u2ACB\uFE00","varsupsetneq":"\u228B\uFE00","varsupsetneqq":"\u2ACC\uFE00","vartheta":"\u03D1","vartriangleleft":"\u22B2","vartriangleright":"\u22B3","vBar":"\u2AE8","Vbar":"\u2AEB","vBarv":"\u2AE9","Vcy":"\u0412","vcy":"\u0432","vdash":"\u22A2","vDash":"\u22A8","Vdash":"\u22A9","VDash":"\u22AB","Vdashl":"\u2AE6","veebar":"\u22BB","vee":"\u2228","Vee":"\u22C1","veeeq":"\u225A","vellip":"\u22EE","verbar":"|","Verbar":"\u2016","vert":"|","Vert":"\u2016","VerticalBar":"\u2223","VerticalLine":"|","VerticalSeparator":"\u2758","VerticalTilde":"\u2240","VeryThinSpace":"\u200A","Vfr":"\uD835\uDD19","vfr":"\uD835\uDD33","vltri":"\u22B2","vnsub":"\u2282\u20D2","vnsup":"\u2283\u20D2","Vopf":"\uD835\uDD4D","vopf":"\uD835\uDD67","vprop":"\u221D","vrtri":"\u22B3","Vscr":"\uD835\uDCB1","vscr":"\uD835\uDCCB","vsubnE":"\u2ACB\uFE00","vsubne":"\u228A\uFE00","vsupnE":"\u2ACC\uFE00","vsupne":"\u228B\uFE00","Vvdash":"\u22AA","vzigzag":"\u299A","Wcirc":"\u0174","wcirc":"\u0175","wedbar":"\u2A5F","wedge":"\u2227","Wedge":"\u22C0","wedgeq":"\u2259","weierp":"\u2118","Wfr":"\uD835\uDD1A","wfr":"\uD835\uDD34","Wopf":"\uD835\uDD4E","wopf":"\uD835\uDD68","wp":"\u2118","wr":"\u2240","wreath":"\u2240","Wscr":"\uD835\uDCB2","wscr":"\uD835\uDCCC","xcap":"\u22C2","xcirc":"\u25EF","xcup":"\u22C3","xdtri":"\u25BD","Xfr":"\uD835\uDD1B","xfr":"\uD835\uDD35","xharr":"\u27F7","xhArr":"\u27FA","Xi":"\u039E","xi":"\u03BE","xlarr":"\u27F5","xlArr":"\u27F8","xmap":"\u27FC","xnis":"\u22FB","xodot":"\u2A00","Xopf":"\uD835\uDD4F","xopf":"\uD835\uDD69","xoplus":"\u2A01","xotime":"\u2A02","xrarr":"\u27F6","xrArr":"\u27F9","Xscr":"\uD835\uDCB3","xscr":"\uD835\uDCCD","xsqcup":"\u2A06","xuplus":"\u2A04","xutri":"\u25B3","xvee":"\u22C1","xwedge":"\u22C0","Yacute":"\u00DD","yacute":"\u00FD","YAcy":"\u042F","yacy":"\u044F","Ycirc":"\u0176","ycirc":"\u0177","Ycy":"\u042B","ycy":"\u044B","yen":"\u00A5","Yfr":"\uD835\uDD1C","yfr":"\uD835\uDD36","YIcy":"\u0407","yicy":"\u0457","Yopf":"\uD835\uDD50","yopf":"\uD835\uDD6A","Yscr":"\uD835\uDCB4","yscr":"\uD835\uDCCE","YUcy":"\u042E","yucy":"\u044E","yuml":"\u00FF","Yuml":"\u0178","Zacute":"\u0179","zacute":"\u017A","Zcaron":"\u017D","zcaron":"\u017E","Zcy":"\u0417","zcy":"\u0437","Zdot":"\u017B","zdot":"\u017C","zeetrf":"\u2128","ZeroWidthSpace":"\u200B","Zeta":"\u0396","zeta":"\u03B6","zfr":"\uD835\uDD37","Zfr":"\u2128","ZHcy":"\u0416","zhcy":"\u0436","zigrarr":"\u21DD","zopf":"\uD835\uDD6B","Zopf":"\u2124","Zscr":"\uD835\uDCB5","zscr":"\uD835\uDCCF","zwj":"\u200D","zwnj":"\u200C"}
-},{}],112:[function(require,module,exports){
+},{}],101:[function(require,module,exports){
 module.exports={"Aacute":"\u00C1","aacute":"\u00E1","Acirc":"\u00C2","acirc":"\u00E2","acute":"\u00B4","AElig":"\u00C6","aelig":"\u00E6","Agrave":"\u00C0","agrave":"\u00E0","amp":"&","AMP":"&","Aring":"\u00C5","aring":"\u00E5","Atilde":"\u00C3","atilde":"\u00E3","Auml":"\u00C4","auml":"\u00E4","brvbar":"\u00A6","Ccedil":"\u00C7","ccedil":"\u00E7","cedil":"\u00B8","cent":"\u00A2","copy":"\u00A9","COPY":"\u00A9","curren":"\u00A4","deg":"\u00B0","divide":"\u00F7","Eacute":"\u00C9","eacute":"\u00E9","Ecirc":"\u00CA","ecirc":"\u00EA","Egrave":"\u00C8","egrave":"\u00E8","ETH":"\u00D0","eth":"\u00F0","Euml":"\u00CB","euml":"\u00EB","frac12":"\u00BD","frac14":"\u00BC","frac34":"\u00BE","gt":">","GT":">","Iacute":"\u00CD","iacute":"\u00ED","Icirc":"\u00CE","icirc":"\u00EE","iexcl":"\u00A1","Igrave":"\u00CC","igrave":"\u00EC","iquest":"\u00BF","Iuml":"\u00CF","iuml":"\u00EF","laquo":"\u00AB","lt":"<","LT":"<","macr":"\u00AF","micro":"\u00B5","middot":"\u00B7","nbsp":"\u00A0","not":"\u00AC","Ntilde":"\u00D1","ntilde":"\u00F1","Oacute":"\u00D3","oacute":"\u00F3","Ocirc":"\u00D4","ocirc":"\u00F4","Ograve":"\u00D2","ograve":"\u00F2","ordf":"\u00AA","ordm":"\u00BA","Oslash":"\u00D8","oslash":"\u00F8","Otilde":"\u00D5","otilde":"\u00F5","Ouml":"\u00D6","ouml":"\u00F6","para":"\u00B6","plusmn":"\u00B1","pound":"\u00A3","quot":"\"","QUOT":"\"","raquo":"\u00BB","reg":"\u00AE","REG":"\u00AE","sect":"\u00A7","shy":"\u00AD","sup1":"\u00B9","sup2":"\u00B2","sup3":"\u00B3","szlig":"\u00DF","THORN":"\u00DE","thorn":"\u00FE","times":"\u00D7","Uacute":"\u00DA","uacute":"\u00FA","Ucirc":"\u00DB","ucirc":"\u00FB","Ugrave":"\u00D9","ugrave":"\u00F9","uml":"\u00A8","Uuml":"\u00DC","uuml":"\u00FC","Yacute":"\u00DD","yacute":"\u00FD","yen":"\u00A5","yuml":"\u00FF"}
-},{}],113:[function(require,module,exports){
+},{}],102:[function(require,module,exports){
 module.exports={"amp":"&","apos":"'","gt":">","lt":"<","quot":"\""}
 
-},{}],114:[function(require,module,exports){
+},{}],103:[function(require,module,exports){
 (function (global,setImmediate){
 (function(global){
 
@@ -49039,7 +46953,7 @@ Promise.reject = function(reason){
 })(typeof window != 'undefined' ? window : typeof global != 'undefined' ? global : typeof self != 'undefined' ? self : this);
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"timers":201}],115:[function(require,module,exports){
+},{"timers":202}],104:[function(require,module,exports){
 'use strict';
 
 var has = Object.prototype.hasOwnProperty
@@ -49377,7 +47291,7 @@ if ('undefined' !== typeof module) {
   module.exports = EventEmitter;
 }
 
-},{}],116:[function(require,module,exports){
+},{}],105:[function(require,module,exports){
 (function (Buffer){
 const getPixels = require('get-pixels')
 const getRgbaPalette = require('get-rgba-palette')
@@ -49440,7 +47354,7 @@ function paletteFromBitmap (filename, options, callback) {
 module.exports = pify(colorPalette)
 
 }).call(this,{"isBuffer":require("../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{"../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":174,"chroma-js":80,"get-pixels":117,"get-rgba-palette":118,"get-svg-colors":119,"pify":159}],117:[function(require,module,exports){
+},{"../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":175,"chroma-js":69,"get-pixels":106,"get-rgba-palette":107,"get-svg-colors":108,"pify":159}],106:[function(require,module,exports){
 (function (Buffer,process){
 'use strict'
 
@@ -49578,7 +47492,7 @@ module.exports = function getPixels(url, type, cb) {
   }
 }
 }).call(this,{"isBuffer":require("../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":174,"_process":178,"data-uri-to-buffer":92,"ndarray":152,"ndarray-pack":150,"omggif":157,"path":176,"through":164}],118:[function(require,module,exports){
+},{"../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":175,"_process":179,"data-uri-to-buffer":81,"ndarray":152,"ndarray-pack":150,"omggif":157,"path":177,"through":165}],107:[function(require,module,exports){
 var quantize = require('quantize')
 
 module.exports = function(pixels, count, quality, filter) {
@@ -49648,7 +47562,7 @@ function compute(pixels, count, quality, filter) {
     }
 }
 
-},{"quantize":162}],119:[function(require,module,exports){
+},{"quantize":163}],108:[function(require,module,exports){
 const fs = require('fs')
 const cheerio = require('cheerio')
 const isSVG = require('is-svg')
@@ -49709,7 +47623,2173 @@ module.exports = function getSvgColors(input, options) {
 
 }
 
-},{"cheerio":69,"chroma-js":80,"fs":166,"is-svg":132,"lodash.compact":137,"lodash.uniq":148}],120:[function(require,module,exports){
+},{"cheerio":109,"chroma-js":69,"fs":167,"is-svg":132,"lodash.compact":137,"lodash.uniq":148}],109:[function(require,module,exports){
+/**
+ * Export cheerio (with )
+ */
+
+exports = module.exports = require('./lib/cheerio');
+
+/*
+  Export the version
+*/
+
+exports.version = require('./package.json').version;
+
+},{"./lib/cheerio":115,"./package.json":119}],110:[function(require,module,exports){
+var $ = require('../static'),
+    utils = require('../utils'),
+    isTag = utils.isTag,
+    domEach = utils.domEach,
+    hasOwn = Object.prototype.hasOwnProperty,
+    camelCase = utils.camelCase,
+    cssCase = utils.cssCase,
+    rspace = /\s+/,
+    dataAttrPrefix = 'data-',
+    _ = {
+      forEach: require('lodash.foreach'),
+      extend: require('lodash.assignin'),
+      some: require('lodash.some')
+    },
+
+  // Lookup table for coercing string data-* attributes to their corresponding
+  // JavaScript primitives
+  primitives = {
+    null: null,
+    true: true,
+    false: false
+  },
+
+  // Attributes that are booleans
+  rboolean = /^(?:autofocus|autoplay|async|checked|controls|defer|disabled|hidden|loop|multiple|open|readonly|required|scoped|selected)$/i,
+  // Matches strings that look like JSON objects or arrays
+  rbrace = /^(?:\{[\w\W]*\}|\[[\w\W]*\])$/;
+
+
+var getAttr = function(elem, name) {
+  if (!elem || !isTag(elem)) return;
+
+  if (!elem.attribs) {
+    elem.attribs = {};
+  }
+
+  // Return the entire attribs object if no attribute specified
+  if (!name) {
+    return elem.attribs;
+  }
+
+  if (hasOwn.call(elem.attribs, name)) {
+    // Get the (decoded) attribute
+    return rboolean.test(name) ? name : elem.attribs[name];
+  }
+
+  // Mimic the DOM and return text content as value for `option's`
+  if (elem.name === 'option' && name === 'value') {
+    return $.text(elem.children);
+  }
+
+  // Mimic DOM with default value for radios/checkboxes
+  if (elem.name === 'input' &&
+      (elem.attribs.type === 'radio' || elem.attribs.type === 'checkbox') &&
+      name === 'value') {
+    return 'on';
+  }
+};
+
+var setAttr = function(el, name, value) {
+
+  if (value === null) {
+    removeAttribute(el, name);
+  } else {
+    el.attribs[name] = value+'';
+  }
+};
+
+exports.attr = function(name, value) {
+  // Set the value (with attr map support)
+  if (typeof name === 'object' || value !== undefined) {
+    if (typeof value === 'function') {
+      return domEach(this, function(i, el) {
+        setAttr(el, name, value.call(el, i, el.attribs[name]));
+      });
+    }
+    return domEach(this, function(i, el) {
+      if (!isTag(el)) return;
+
+      if (typeof name === 'object') {
+        _.forEach(name, function(value, name) {
+          setAttr(el, name, value);
+        });
+      } else {
+        setAttr(el, name, value);
+      }
+    });
+  }
+
+  return getAttr(this[0], name);
+};
+
+var getProp = function (el, name) {
+  if (!el || !isTag(el)) return;
+  
+  return el.hasOwnProperty(name)
+      ? el[name]
+      : rboolean.test(name)
+          ? getAttr(el, name) !== undefined
+          : getAttr(el, name);
+};
+
+var setProp = function (el, name, value) {
+  el[name] = rboolean.test(name) ? !!value : value;
+};
+
+exports.prop = function (name, value) {
+  var i = 0,
+      property;
+
+  if (typeof name === 'string' && value === undefined) {
+
+    switch (name) {
+      case 'style':
+        property = this.css();
+
+        _.forEach(property, function (v, p) {
+          property[i++] = p;
+        });
+
+        property.length = i;
+
+        break;
+      case 'tagName':
+      case 'nodeName':
+        property = this[0].name.toUpperCase();
+        break;
+      default:
+        property = getProp(this[0], name);
+    }
+
+    return property;
+  }
+
+  if (typeof name === 'object' || value !== undefined) {
+
+    if (typeof value === 'function') {
+      return domEach(this, function(i, el) {
+        setProp(el, name, value.call(el, i, getProp(el, name)));
+      });
+    }
+
+    return domEach(this, function(i, el) {
+      if (!isTag(el)) return;
+
+      if (typeof name === 'object') {
+
+        _.forEach(name, function(val, name) {
+          setProp(el, name, val);
+        });
+
+      } else {
+        setProp(el, name, value);
+      }
+    });
+
+  }
+};
+
+var setData = function(el, name, value) {
+  if (!el.data) {
+    el.data = {};
+  }
+
+  if (typeof name === 'object') return _.extend(el.data, name);
+  if (typeof name === 'string' && value !== undefined) {
+    el.data[name] = value;
+  } else if (typeof name === 'object') {
+    _.extend(el.data, name);
+  }
+};
+
+// Read the specified attribute from the equivalent HTML5 `data-*` attribute,
+// and (if present) cache the value in the node's internal data store. If no
+// attribute name is specified, read *all* HTML5 `data-*` attributes in this
+// manner.
+var readData = function(el, name) {
+  var readAll = arguments.length === 1;
+  var domNames, domName, jsNames, jsName, value, idx, length;
+
+  if (readAll) {
+    domNames = Object.keys(el.attribs).filter(function(attrName) {
+      return attrName.slice(0, dataAttrPrefix.length) === dataAttrPrefix;
+    });
+    jsNames = domNames.map(function(domName) {
+      return camelCase(domName.slice(dataAttrPrefix.length));
+    });
+  } else {
+    domNames = [dataAttrPrefix + cssCase(name)];
+    jsNames = [name];
+  }
+
+  for (idx = 0, length = domNames.length; idx < length; ++idx) {
+    domName = domNames[idx];
+    jsName = jsNames[idx];
+    if (hasOwn.call(el.attribs, domName)) {
+      value = el.attribs[domName];
+
+      if (hasOwn.call(primitives, value)) {
+        value = primitives[value];
+      } else if (value === String(Number(value))) {
+        value = Number(value);
+      } else if (rbrace.test(value)) {
+        try {
+          value = JSON.parse(value);
+        } catch(e){ }
+      }
+
+      el.data[jsName] = value;
+    }
+  }
+
+  return readAll ? el.data : value;
+};
+
+exports.data = function(name, value) {
+  var elem = this[0];
+
+  if (!elem || !isTag(elem)) return;
+
+  if (!elem.data) {
+    elem.data = {};
+  }
+
+  // Return the entire data object if no data specified
+  if (!name) {
+    return readData(elem);
+  }
+
+  // Set the value (with attr map support)
+  if (typeof name === 'object' || value !== undefined) {
+    domEach(this, function(i, el) {
+      setData(el, name, value);
+    });
+    return this;
+  } else if (hasOwn.call(elem.data, name)) {
+    return elem.data[name];
+  }
+
+  return readData(elem, name);
+};
+
+/**
+ * Get the value of an element
+ */
+
+exports.val = function(value) {
+  var querying = arguments.length === 0,
+      element = this[0];
+
+  if(!element) return;
+
+  switch (element.name) {
+    case 'textarea':
+      return this.text(value);
+    case 'input':
+      switch (this.attr('type')) {
+        case 'radio':
+          if (querying) {
+            return this.attr('value');
+          } else {
+            this.attr('value', value);
+            return this;
+          }
+          break;
+        default:
+          return this.attr('value', value);
+      }
+      return;
+    case 'select':
+      var option = this.find('option:selected'),
+          returnValue;
+      if (option === undefined) return undefined;
+      if (!querying) {
+        if (!this.attr().hasOwnProperty('multiple') && typeof value == 'object') {
+          return this;
+        }
+        if (typeof value != 'object') {
+          value = [value];
+        }
+        this.find('option').removeAttr('selected');
+        for (var i = 0; i < value.length; i++) {
+          this.find('option[value="' + value[i] + '"]').attr('selected', '');
+        }
+        return this;
+      }
+      returnValue = option.attr('value');
+      if (this.attr().hasOwnProperty('multiple')) {
+        returnValue = [];
+        domEach(option, function(i, el) {
+          returnValue.push(getAttr(el, 'value'));
+        });
+      }
+      return returnValue;
+    case 'option':
+      if (!querying) {
+        this.attr('value', value);
+        return this;
+      }
+      return this.attr('value');
+  }
+};
+
+/**
+ * Remove an attribute
+ */
+
+var removeAttribute = function(elem, name) {
+  if (!elem.attribs || !hasOwn.call(elem.attribs, name))
+    return;
+
+  delete elem.attribs[name];
+};
+
+
+exports.removeAttr = function(name) {
+  domEach(this, function(i, elem) {
+    removeAttribute(elem, name);
+  });
+
+  return this;
+};
+
+exports.hasClass = function(className) {
+  return _.some(this, function(elem) {
+    var attrs = elem.attribs,
+        clazz = attrs && attrs['class'],
+        idx = -1,
+        end;
+
+    if (clazz) {
+      while ((idx = clazz.indexOf(className, idx+1)) > -1) {
+        end = idx + className.length;
+
+        if ((idx === 0 || rspace.test(clazz[idx-1]))
+            && (end === clazz.length || rspace.test(clazz[end]))) {
+          return true;
+        }
+      }
+    }
+  });
+};
+
+exports.addClass = function(value) {
+  // Support functions
+  if (typeof value === 'function') {
+    return domEach(this, function(i, el) {
+      var className = el.attribs['class'] || '';
+      exports.addClass.call([el], value.call(el, i, className));
+    });
+  }
+
+  // Return if no value or not a string or function
+  if (!value || typeof value !== 'string') return this;
+
+  var classNames = value.split(rspace),
+      numElements = this.length;
+
+
+  for (var i = 0; i < numElements; i++) {
+    // If selected element isn't a tag, move on
+    if (!isTag(this[i])) continue;
+
+    // If we don't already have classes
+    var className = getAttr(this[i], 'class'),
+        numClasses,
+        setClass;
+
+    if (!className) {
+      setAttr(this[i], 'class', classNames.join(' ').trim());
+    } else {
+      setClass = ' ' + className + ' ';
+      numClasses = classNames.length;
+
+      // Check if class already exists
+      for (var j = 0; j < numClasses; j++) {
+        var appendClass = classNames[j] + ' ';
+        if (setClass.indexOf(' ' + appendClass) < 0)
+          setClass += appendClass;
+      }
+
+      setAttr(this[i], 'class', setClass.trim());
+    }
+  }
+
+  return this;
+};
+
+var splitClass = function(className) {
+  return className ? className.trim().split(rspace) : [];
+};
+
+exports.removeClass = function(value) {
+  var classes,
+      numClasses,
+      removeAll;
+
+  // Handle if value is a function
+  if (typeof value === 'function') {
+    return domEach(this, function(i, el) {
+      exports.removeClass.call(
+        [el], value.call(el, i, el.attribs['class'] || '')
+      );
+    });
+  }
+
+  classes = splitClass(value);
+  numClasses = classes.length;
+  removeAll = arguments.length === 0;
+
+  return domEach(this, function(i, el) {
+    if (!isTag(el)) return;
+
+    if (removeAll) {
+      // Short circuit the remove all case as this is the nice one
+      el.attribs.class = '';
+    } else {
+      var elClasses = splitClass(el.attribs.class),
+          index,
+          changed;
+
+      for (var j = 0; j < numClasses; j++) {
+        index = elClasses.indexOf(classes[j]);
+
+        if (index >= 0) {
+          elClasses.splice(index, 1);
+          changed = true;
+
+          // We have to do another pass to ensure that there are not duplicate
+          // classes listed
+          j--;
+        }
+      }
+      if (changed) {
+        el.attribs.class = elClasses.join(' ');
+      }
+    }
+  });
+};
+
+exports.toggleClass = function(value, stateVal) {
+  // Support functions
+  if (typeof value === 'function') {
+    return domEach(this, function(i, el) {
+      exports.toggleClass.call(
+        [el],
+        value.call(el, i, el.attribs['class'] || '', stateVal),
+        stateVal
+      );
+    });
+  }
+
+  // Return if no value or not a string or function
+  if (!value || typeof value !== 'string') return this;
+
+  var classNames = value.split(rspace),
+    numClasses = classNames.length,
+    state = typeof stateVal === 'boolean' ? stateVal ? 1 : -1 : 0,
+    numElements = this.length,
+    elementClasses,
+    index;
+
+  for (var i = 0; i < numElements; i++) {
+    // If selected element isn't a tag, move on
+    if (!isTag(this[i])) continue;
+
+    elementClasses = splitClass(this[i].attribs.class);
+
+    // Check if class already exists
+    for (var j = 0; j < numClasses; j++) {
+      // Check if the class name is currently defined
+      index = elementClasses.indexOf(classNames[j]);
+
+      // Add if stateValue === true or we are toggling and there is no value
+      if (state >= 0 && index < 0) {
+        elementClasses.push(classNames[j]);
+      } else if (state <= 0 && index >= 0) {
+        // Otherwise remove but only if the item exists
+        elementClasses.splice(index, 1);
+      }
+    }
+
+    this[i].attribs.class = elementClasses.join(' ');
+  }
+
+  return this;
+};
+
+exports.is = function (selector) {
+  if (selector) {
+    return this.filter(selector).length > 0;
+  }
+  return false;
+};
+
+
+},{"../static":117,"../utils":118,"lodash.assignin":135,"lodash.foreach":141,"lodash.some":147}],111:[function(require,module,exports){
+var domEach = require('../utils').domEach,
+    _ = {
+      pick: require('lodash.pick'),
+    };
+
+var toString = Object.prototype.toString;
+
+/**
+ * Set / Get css.
+ *
+ * @param {String|Object} prop
+ * @param {String} val
+ * @return {self}
+ * @api public
+ */
+
+exports.css = function(prop, val) {
+  if (arguments.length === 2 ||
+    // When `prop` is a "plain" object
+    (toString.call(prop) === '[object Object]')) {
+    return domEach(this, function(idx, el) {
+      setCss(el, prop, val, idx);
+    });
+  } else {
+    return getCss(this[0], prop);
+  }
+};
+
+/**
+ * Set styles of all elements.
+ *
+ * @param {String|Object} prop
+ * @param {String} val
+ * @param {Number} idx - optional index within the selection
+ * @return {self}
+ * @api private
+ */
+
+function setCss(el, prop, val, idx) {
+  if ('string' == typeof prop) {
+    var styles = getCss(el);
+    if (typeof val === 'function') {
+      val = val.call(el, idx, styles[prop]);
+    }
+
+    if (val === '') {
+      delete styles[prop];
+    } else if (val != null) {
+      styles[prop] = val;
+    }
+
+    el.attribs.style = stringify(styles);
+  } else if ('object' == typeof prop) {
+    Object.keys(prop).forEach(function(k){
+      setCss(el, k, prop[k]);
+    });
+  }
+}
+
+/**
+ * Get parsed styles of the first element.
+ *
+ * @param {String} prop
+ * @return {Object}
+ * @api private
+ */
+
+function getCss(el, prop) {
+  var styles = parse(el.attribs.style);
+  if (typeof prop === 'string') {
+    return styles[prop];
+  } else if (Array.isArray(prop)) {
+    return _.pick(styles, prop);
+  } else {
+    return styles;
+  }
+}
+
+/**
+ * Stringify `obj` to styles.
+ *
+ * @param {Object} obj
+ * @return {Object}
+ * @api private
+ */
+
+function stringify(obj) {
+  return Object.keys(obj || {})
+    .reduce(function(str, prop){
+      return str += ''
+        + (str ? ' ' : '')
+        + prop
+        + ': '
+        + obj[prop]
+        + ';';
+    }, '');
+}
+
+/**
+ * Parse `styles`.
+ *
+ * @param {String} styles
+ * @return {Object}
+ * @api private
+ */
+
+function parse(styles) {
+  styles = (styles || '').trim();
+
+  if (!styles) return {};
+
+  return styles
+    .split(';')
+    .reduce(function(obj, str){
+      var n = str.indexOf(':');
+      // skip if there is no :, or if it is the first/last character
+      if (n < 1 || n === str.length-1) return obj;
+      obj[str.slice(0,n).trim()] = str.slice(n+1).trim();
+      return obj;
+    }, {});
+}
+
+},{"../utils":118,"lodash.pick":144}],112:[function(require,module,exports){
+// https://github.com/jquery/jquery/blob/2.1.3/src/manipulation/var/rcheckableType.js
+// https://github.com/jquery/jquery/blob/2.1.3/src/serialize.js
+var submittableSelector = 'input,select,textarea,keygen',
+    r20 = /%20/g,
+    rCRLF = /\r?\n/g,
+    _ = {
+      map: require('lodash.map')
+    };
+
+exports.serialize = function() {
+  // Convert form elements into name/value objects
+  var arr = this.serializeArray();
+
+  // Serialize each element into a key/value string
+  var retArr = _.map(arr, function(data) {
+    return encodeURIComponent(data.name) + '=' + encodeURIComponent(data.value);
+  });
+
+  // Return the resulting serialization
+  return retArr.join('&').replace(r20, '+');
+};
+
+exports.serializeArray = function() {
+  // Resolve all form elements from either forms or collections of form elements
+  var Cheerio = this.constructor;
+  return this.map(function() {
+      var elem = this;
+      var $elem = Cheerio(elem);
+      if (elem.name === 'form') {
+        return $elem.find(submittableSelector).toArray();
+      } else {
+        return $elem.filter(submittableSelector).toArray();
+      }
+    }).filter(
+        // Verify elements have a name (`attr.name`) and are not disabled (`:disabled`)
+        '[name!=""]:not(:disabled)'
+        // and cannot be clicked (`[type=submit]`) or are used in `x-www-form-urlencoded` (`[type=file]`)
+        + ':not(:submit, :button, :image, :reset, :file)'
+        // and are either checked/don't have a checkable state
+        + ':matches([checked], :not(:checkbox, :radio))'
+    // Convert each of the elements to its value(s)
+    ).map(function(i, elem) {
+      var $elem = Cheerio(elem);
+      var name = $elem.attr('name');
+      var val = $elem.val();
+
+      // If there is no value set (e.g. `undefined`, `null`), then return nothing
+      if (val == null) {
+        return null;
+      } else {
+        // If we have an array of values (e.g. `<select multiple>`), return an array of key/value pairs
+        if (Array.isArray(val)) {
+          return _.map(val, function(val) {
+            // We trim replace any line endings (e.g. `\r` or `\r\n` with `\r\n`) to guarantee consistency across platforms
+            //   These can occur inside of `<textarea>'s`
+            return {name: name, value: val.replace( rCRLF, '\r\n' )};
+          });
+        // Otherwise (e.g. `<input type="text">`, return only one key/value pair
+        } else {
+          return {name: name, value: val.replace( rCRLF, '\r\n' )};
+        }
+      }
+    // Convert our result to an array
+    }).get();
+};
+
+},{"lodash.map":142}],113:[function(require,module,exports){
+var parse = require('../parse'),
+    $ = require('../static'),
+    updateDOM = parse.update,
+    evaluate = parse.evaluate,
+    utils = require('../utils'),
+    domEach = utils.domEach,
+    cloneDom = utils.cloneDom,
+    isHtml = utils.isHtml,
+    slice = Array.prototype.slice,
+    _ = {
+      flatten: require('lodash.flatten'),
+      bind: require('lodash.bind'),
+      forEach: require('lodash.foreach')
+    };
+
+// Create an array of nodes, recursing into arrays and parsing strings if
+// necessary
+exports._makeDomArray = function makeDomArray(elem, clone) {
+  if (elem == null) {
+    return [];
+  } else if (elem.cheerio) {
+    return clone ? cloneDom(elem.get(), elem.options) : elem.get();
+  } else if (Array.isArray(elem)) {
+    return _.flatten(elem.map(function(el) {
+      return this._makeDomArray(el, clone);
+    }, this));
+  } else if (typeof elem === 'string') {
+    return evaluate(elem, this.options);
+  } else {
+    return clone ? cloneDom([elem]) : [elem];
+  }
+};
+
+var _insert = function(concatenator) {
+  return function() {
+    var elems = slice.call(arguments),
+        lastIdx = this.length - 1;
+
+    return domEach(this, function(i, el) {
+      var dom, domSrc;
+
+      if (typeof elems[0] === 'function') {
+        domSrc = elems[0].call(el, i, $.html(el.children));
+      } else {
+        domSrc = elems;
+      }
+
+      dom = this._makeDomArray(domSrc, i < lastIdx);
+      concatenator(dom, el.children, el);
+    });
+  };
+};
+
+/*
+ * Modify an array in-place, removing some number of elements and adding new
+ * elements directly following them.
+ *
+ * @param {Array} array Target array to splice.
+ * @param {Number} spliceIdx Index at which to begin changing the array.
+ * @param {Number} spliceCount Number of elements to remove from the array.
+ * @param {Array} newElems Elements to insert into the array.
+ *
+ * @api private
+ */
+var uniqueSplice = function(array, spliceIdx, spliceCount, newElems, parent) {
+  var spliceArgs = [spliceIdx, spliceCount].concat(newElems),
+      prev = array[spliceIdx - 1] || null,
+      next = array[spliceIdx] || null;
+  var idx, len, prevIdx, node, oldParent;
+
+  // Before splicing in new elements, ensure they do not already appear in the
+  // current array.
+  for (idx = 0, len = newElems.length; idx < len; ++idx) {
+    node = newElems[idx];
+    oldParent = node.parent || node.root;
+    prevIdx = oldParent && oldParent.children.indexOf(newElems[idx]);
+
+    if (oldParent && prevIdx > -1) {
+      oldParent.children.splice(prevIdx, 1);
+      if (parent === oldParent && spliceIdx > prevIdx) {
+        spliceArgs[0]--;
+      }
+    }
+
+    node.root = null;
+    node.parent = parent;
+
+    if (node.prev) {
+      node.prev.next = node.next || null;
+    }
+
+    if (node.next) {
+      node.next.prev = node.prev || null;
+    }
+
+    node.prev = newElems[idx - 1] || prev;
+    node.next = newElems[idx + 1] || next;
+  }
+
+  if (prev) {
+    prev.next = newElems[0];
+  }
+  if (next) {
+    next.prev = newElems[newElems.length - 1];
+  }
+  return array.splice.apply(array, spliceArgs);
+};
+
+exports.appendTo = function(target) {
+  if (!target.cheerio) {
+    target = this.constructor.call(this.constructor, target, null, this._originalRoot);
+  }
+
+  target.append(this);
+
+  return this;
+};
+
+exports.prependTo = function(target) {
+  if (!target.cheerio) {
+    target = this.constructor.call(this.constructor, target, null, this._originalRoot);
+  }
+
+  target.prepend(this);
+
+  return this;
+};
+
+exports.append = _insert(function(dom, children, parent) {
+  uniqueSplice(children, children.length, 0, dom, parent);
+});
+
+exports.prepend = _insert(function(dom, children, parent) {
+  uniqueSplice(children, 0, 0, dom, parent);
+});
+
+exports.wrap = function(wrapper) {
+  var wrapperFn = typeof wrapper === 'function' && wrapper,
+      lastIdx = this.length - 1;
+
+  _.forEach(this, _.bind(function(el, i) {
+    var parent = el.parent || el.root,
+        siblings = parent.children,
+        dom, index;
+
+    if (!parent) {
+      return;
+    }
+
+    if (wrapperFn) {
+      wrapper = wrapperFn.call(el, i);
+    }
+
+    if (typeof wrapper === 'string' && !isHtml(wrapper)) {
+      wrapper = this.parents().last().find(wrapper).clone();
+    }
+
+    dom = this._makeDomArray(wrapper, i < lastIdx).slice(0, 1);
+    index = siblings.indexOf(el);
+
+    updateDOM([el], dom[0]);
+    // The previous operation removed the current element from the `siblings`
+    // array, so the `dom` array can be inserted without removing any
+    // additional elements.
+    uniqueSplice(siblings, index, 0, dom, parent);
+  }, this));
+
+  return this;
+};
+
+exports.after = function() {
+  var elems = slice.call(arguments),
+      lastIdx = this.length - 1;
+
+  domEach(this, function(i, el) {
+    var parent = el.parent || el.root;
+    if (!parent) {
+      return;
+    }
+
+    var siblings = parent.children,
+        index = siblings.indexOf(el),
+        domSrc, dom;
+
+    // If not found, move on
+    if (index < 0) return;
+
+    if (typeof elems[0] === 'function') {
+      domSrc = elems[0].call(el, i, $.html(el.children));
+    } else {
+      domSrc = elems;
+    }
+    dom = this._makeDomArray(domSrc, i < lastIdx);
+
+    // Add element after `this` element
+    uniqueSplice(siblings, index + 1, 0, dom, parent);
+  });
+
+  return this;
+};
+
+exports.insertAfter = function(target) {
+  var clones = [],
+      self = this;
+  if (typeof target === 'string') {
+    target = this.constructor.call(this.constructor, target, null, this._originalRoot);
+  }
+  target = this._makeDomArray(target);
+  self.remove();
+  domEach(target, function(i, el) {
+    var clonedSelf = self._makeDomArray(self.clone());
+    var parent = el.parent || el.root;
+    if (!parent) {
+      return;
+    }
+
+    var siblings = parent.children,
+        index = siblings.indexOf(el);
+
+    // If not found, move on
+    if (index < 0) return;
+
+    // Add cloned `this` element(s) after target element
+    uniqueSplice(siblings, index + 1, 0, clonedSelf, parent);
+    clones.push(clonedSelf);
+  });
+  return this.constructor.call(this.constructor, this._makeDomArray(clones));
+};
+
+exports.before = function() {
+  var elems = slice.call(arguments),
+      lastIdx = this.length - 1;
+
+  domEach(this, function(i, el) {
+    var parent = el.parent || el.root;
+    if (!parent) {
+      return;
+    }
+
+    var siblings = parent.children,
+        index = siblings.indexOf(el),
+        domSrc, dom;
+
+    // If not found, move on
+    if (index < 0) return;
+
+    if (typeof elems[0] === 'function') {
+      domSrc = elems[0].call(el, i, $.html(el.children));
+    } else {
+      domSrc = elems;
+    }
+
+    dom = this._makeDomArray(domSrc, i < lastIdx);
+
+    // Add element before `el` element
+    uniqueSplice(siblings, index, 0, dom, parent);
+  });
+
+  return this;
+};
+
+exports.insertBefore = function(target) {
+  var clones = [],
+      self = this;
+  if (typeof target === 'string') {
+    target = this.constructor.call(this.constructor, target, null, this._originalRoot);
+  }
+  target = this._makeDomArray(target);
+  self.remove();
+  domEach(target, function(i, el) {
+    var clonedSelf = self._makeDomArray(self.clone());
+    var parent = el.parent || el.root;
+    if (!parent) {
+      return;
+    }
+
+    var siblings = parent.children,
+        index = siblings.indexOf(el);
+
+    // If not found, move on
+    if (index < 0) return;
+
+    // Add cloned `this` element(s) after target element
+    uniqueSplice(siblings, index, 0, clonedSelf, parent);
+    clones.push(clonedSelf);
+  });
+  return this.constructor.call(this.constructor, this._makeDomArray(clones));
+};
+
+/*
+  remove([selector])
+*/
+exports.remove = function(selector) {
+  var elems = this;
+
+  // Filter if we have selector
+  if (selector)
+    elems = elems.filter(selector);
+
+  domEach(elems, function(i, el) {
+    var parent = el.parent || el.root;
+    if (!parent) {
+      return;
+    }
+
+    var siblings = parent.children,
+        index = siblings.indexOf(el);
+
+    if (index < 0) return;
+
+    siblings.splice(index, 1);
+    if (el.prev) {
+      el.prev.next = el.next;
+    }
+    if (el.next) {
+      el.next.prev = el.prev;
+    }
+    el.prev = el.next = el.parent = el.root = null;
+  });
+
+  return this;
+};
+
+exports.replaceWith = function(content) {
+  var self = this;
+
+  domEach(this, function(i, el) {
+    var parent = el.parent || el.root;
+    if (!parent) {
+      return;
+    }
+
+    var siblings = parent.children,
+        dom = self._makeDomArray(typeof content === 'function' ? content.call(el, i, el) : content),
+        index;
+
+    // In the case that `dom` contains nodes that already exist in other
+    // structures, ensure those nodes are properly removed.
+    updateDOM(dom, null);
+
+    index = siblings.indexOf(el);
+
+    // Completely remove old element
+    uniqueSplice(siblings, index, 1, dom, parent);
+    el.parent = el.prev = el.next = el.root = null;
+  });
+
+  return this;
+};
+
+exports.empty = function() {
+  domEach(this, function(i, el) {
+    _.forEach(el.children, function(el) {
+      el.next = el.prev = el.parent = null;
+    });
+
+    el.children.length = 0;
+  });
+  return this;
+};
+
+/**
+ * Set/Get the HTML
+ */
+exports.html = function(str) {
+  if (str === undefined) {
+    if (!this[0] || !this[0].children) return null;
+    return $.html(this[0].children, this.options);
+  }
+
+  var opts = this.options;
+
+  domEach(this, function(i, el) {
+    _.forEach(el.children, function(el) {
+      el.next = el.prev = el.parent = null;
+    });
+
+    var content = str.cheerio ? str.clone().get() : evaluate('' + str, opts);
+
+    updateDOM(content, el);
+  });
+
+  return this;
+};
+
+exports.toString = function() {
+  return $.html(this, this.options);
+};
+
+exports.text = function(str) {
+  // If `str` is undefined, act as a "getter"
+  if (str === undefined) {
+    return $.text(this);
+  } else if (typeof str === 'function') {
+    // Function support
+    return domEach(this, function(i, el) {
+      var $el = [el];
+      return exports.text.call($el, str.call(el, i, $.text($el)));
+    });
+  }
+
+  // Append text node to each selected elements
+  domEach(this, function(i, el) {
+    _.forEach(el.children, function(el) {
+      el.next = el.prev = el.parent = null;
+    });
+
+    var elem = {
+      data: '' + str,
+      type: 'text',
+      parent: el,
+      prev: null,
+      next: null,
+      children: []
+    };
+
+    updateDOM(elem, el);
+  });
+
+  return this;
+};
+
+exports.clone = function() {
+  return this._make(cloneDom(this.get(), this.options));
+};
+
+},{"../parse":116,"../static":117,"../utils":118,"lodash.bind":136,"lodash.flatten":140,"lodash.foreach":141}],114:[function(require,module,exports){
+var select = require('css-select'),
+    utils = require('../utils'),
+    domEach = utils.domEach,
+    uniqueSort = require('htmlparser2').DomUtils.uniqueSort,
+    isTag = utils.isTag,
+    _ = {
+      bind: require('lodash.bind'),
+      forEach: require('lodash.foreach'),
+      reject: require('lodash.reject'),
+      filter: require('lodash.filter'),
+      reduce: require('lodash.reduce')
+    };
+
+exports.find = function(selectorOrHaystack) {
+  var elems = _.reduce(this, function(memo, elem) {
+    return memo.concat(_.filter(elem.children, isTag));
+  }, []);
+  var contains = this.constructor.contains;
+  var haystack;
+
+  if (selectorOrHaystack && typeof selectorOrHaystack !== 'string') {
+    if (selectorOrHaystack.cheerio) {
+      haystack = selectorOrHaystack.get();
+    } else {
+      haystack = [selectorOrHaystack];
+    }
+
+    return this._make(haystack.filter(function(elem) {
+      var idx, len;
+      for (idx = 0, len = this.length; idx < len; ++idx) {
+        if (contains(this[idx], elem)) {
+          return true;
+        }
+      }
+    }, this));
+  }
+
+  var options = {__proto__: this.options, context: this.toArray()};
+
+  return this._make(select(selectorOrHaystack, elems, options));
+};
+
+// Get the parent of each element in the current set of matched elements,
+// optionally filtered by a selector.
+exports.parent = function(selector) {
+  var set = [];
+
+  domEach(this, function(idx, elem) {
+    var parentElem = elem.parent;
+    if (parentElem && set.indexOf(parentElem) < 0) {
+      set.push(parentElem);
+    }
+  });
+
+  if (arguments.length) {
+    set = exports.filter.call(set, selector, this);
+  }
+
+  return this._make(set);
+};
+
+exports.parents = function(selector) {
+  var parentNodes = [];
+
+  // When multiple DOM elements are in the original set, the resulting set will
+  // be in *reverse* order of the original elements as well, with duplicates
+  // removed.
+  this.get().reverse().forEach(function(elem) {
+    traverseParents(this, elem.parent, selector, Infinity)
+      .forEach(function(node) {
+        if (parentNodes.indexOf(node) === -1) {
+          parentNodes.push(node);
+        }
+      }
+    );
+  }, this);
+
+  return this._make(parentNodes);
+};
+
+exports.parentsUntil = function(selector, filter) {
+  var parentNodes = [], untilNode, untilNodes;
+
+  if (typeof selector === 'string') {
+    untilNode = select(selector, this.parents().toArray(), this.options)[0];
+  } else if (selector && selector.cheerio) {
+    untilNodes = selector.toArray();
+  } else if (selector) {
+    untilNode = selector;
+  }
+
+  // When multiple DOM elements are in the original set, the resulting set will
+  // be in *reverse* order of the original elements as well, with duplicates
+  // removed.
+
+  this.toArray().reverse().forEach(function(elem) {
+    while ((elem = elem.parent)) {
+      if ((untilNode && elem !== untilNode) ||
+        (untilNodes && untilNodes.indexOf(elem) === -1) ||
+        (!untilNode && !untilNodes)) {
+        if (isTag(elem) && parentNodes.indexOf(elem) === -1) { parentNodes.push(elem); }
+      } else {
+        break;
+      }
+    }
+  }, this);
+
+  return this._make(filter ? select(filter, parentNodes, this.options) : parentNodes);
+};
+
+// For each element in the set, get the first element that matches the selector
+// by testing the element itself and traversing up through its ancestors in the
+// DOM tree.
+exports.closest = function(selector) {
+  var set = [];
+
+  if (!selector) {
+    return this._make(set);
+  }
+
+  domEach(this, function(idx, elem) {
+    var closestElem = traverseParents(this, elem, selector, 1)[0];
+
+    // Do not add duplicate elements to the set
+    if (closestElem && set.indexOf(closestElem) < 0) {
+      set.push(closestElem);
+    }
+  }.bind(this));
+
+  return this._make(set);
+};
+
+exports.next = function(selector) {
+  if (!this[0]) { return this; }
+  var elems = [];
+
+  _.forEach(this, function(elem) {
+    while ((elem = elem.next)) {
+      if (isTag(elem)) {
+        elems.push(elem);
+        return;
+      }
+    }
+  });
+
+  return selector ?
+    exports.filter.call(elems, selector, this) :
+    this._make(elems);
+};
+
+exports.nextAll = function(selector) {
+  if (!this[0]) { return this; }
+  var elems = [];
+
+  _.forEach(this, function(elem) {
+    while ((elem = elem.next)) {
+      if (isTag(elem) && elems.indexOf(elem) === -1) {
+        elems.push(elem);
+      }
+    }
+  });
+
+  return selector ?
+    exports.filter.call(elems, selector, this) :
+    this._make(elems);
+};
+
+exports.nextUntil = function(selector, filterSelector) {
+  if (!this[0]) { return this; }
+  var elems = [], untilNode, untilNodes;
+
+  if (typeof selector === 'string') {
+    untilNode = select(selector, this.nextAll().get(), this.options)[0];
+  } else if (selector && selector.cheerio) {
+    untilNodes = selector.get();
+  } else if (selector) {
+    untilNode = selector;
+  }
+
+  _.forEach(this, function(elem) {
+    while ((elem = elem.next)) {
+      if ((untilNode && elem !== untilNode) ||
+        (untilNodes && untilNodes.indexOf(elem) === -1) ||
+        (!untilNode && !untilNodes)) {
+        if (isTag(elem) && elems.indexOf(elem) === -1) {
+          elems.push(elem);
+        }
+      } else {
+        break;
+      }
+    }
+  });
+
+  return filterSelector ?
+    exports.filter.call(elems, filterSelector, this) :
+    this._make(elems);
+};
+
+exports.prev = function(selector) {
+  if (!this[0]) { return this; }
+  var elems = [];
+
+  _.forEach(this, function(elem) {
+    while ((elem = elem.prev)) {
+      if (isTag(elem)) {
+        elems.push(elem);
+        return;
+      }
+    }
+  });
+
+  return selector ?
+    exports.filter.call(elems, selector, this) :
+    this._make(elems);
+};
+
+exports.prevAll = function(selector) {
+  if (!this[0]) { return this; }
+  var elems = [];
+
+  _.forEach(this, function(elem) {
+    while ((elem = elem.prev)) {
+      if (isTag(elem) && elems.indexOf(elem) === -1) {
+        elems.push(elem);
+      }
+    }
+  });
+
+  return selector ?
+    exports.filter.call(elems, selector, this) :
+    this._make(elems);
+};
+
+exports.prevUntil = function(selector, filterSelector) {
+  if (!this[0]) { return this; }
+  var elems = [], untilNode, untilNodes;
+
+  if (typeof selector === 'string') {
+    untilNode = select(selector, this.prevAll().get(), this.options)[0];
+  } else if (selector && selector.cheerio) {
+    untilNodes = selector.get();
+  } else if (selector) {
+    untilNode = selector;
+  }
+
+  _.forEach(this, function(elem) {
+    while ((elem = elem.prev)) {
+      if ((untilNode && elem !== untilNode) ||
+        (untilNodes && untilNodes.indexOf(elem) === -1) ||
+        (!untilNode && !untilNodes)) {
+        if (isTag(elem) && elems.indexOf(elem) === -1) {
+          elems.push(elem);
+        }
+      } else {
+        break;
+      }
+    }
+  });
+
+  return filterSelector ?
+    exports.filter.call(elems, filterSelector, this) :
+    this._make(elems);
+};
+
+exports.siblings = function(selector) {
+  var parent = this.parent();
+
+  var elems = _.filter(
+    parent ? parent.children() : this.siblingsAndMe(),
+    _.bind(function(elem) { return isTag(elem) && !this.is(elem); }, this)
+  );
+
+  if (selector !== undefined) {
+    return exports.filter.call(elems, selector, this);
+  } else {
+    return this._make(elems);
+  }
+};
+
+exports.children = function(selector) {
+
+  var elems = _.reduce(this, function(memo, elem) {
+    return memo.concat(_.filter(elem.children, isTag));
+  }, []);
+
+  if (selector === undefined) return this._make(elems);
+
+  return exports.filter.call(elems, selector, this);
+};
+
+exports.contents = function() {
+  return this._make(_.reduce(this, function(all, elem) {
+    all.push.apply(all, elem.children);
+    return all;
+  }, []));
+};
+
+exports.each = function(fn) {
+  var i = 0, len = this.length;
+  while (i < len && fn.call(this[i], i, this[i]) !== false) ++i;
+  return this;
+};
+
+exports.map = function(fn) {
+  return this._make(_.reduce(this, function(memo, el, i) {
+    var val = fn.call(el, i, el);
+    return val == null ? memo : memo.concat(val);
+  }, []));
+};
+
+var makeFilterMethod = function(filterFn) {
+  return function(match, container) {
+    var testFn;
+    container = container || this;
+
+    if (typeof match === 'string') {
+      testFn = select.compile(match, container.options);
+    } else if (typeof match === 'function') {
+      testFn = function(el, i) {
+        return match.call(el, i, el);
+      };
+    } else if (match.cheerio) {
+      testFn = match.is.bind(match);
+    } else {
+      testFn = function(el) {
+        return match === el;
+      };
+    }
+
+    return container._make(filterFn(this, testFn));
+  };
+};
+
+exports.filter = makeFilterMethod(_.filter);
+exports.not = makeFilterMethod(_.reject);
+
+exports.has = function(selectorOrHaystack) {
+  var that = this;
+  return exports.filter.call(this, function() {
+    return that._make(this).find(selectorOrHaystack).length > 0;
+  });
+};
+
+exports.first = function() {
+  return this.length > 1 ? this._make(this[0]) : this;
+};
+
+exports.last = function() {
+  return this.length > 1 ? this._make(this[this.length - 1]) : this;
+};
+
+// Reduce the set of matched elements to the one at the specified index.
+exports.eq = function(i) {
+  i = +i;
+
+  // Use the first identity optimization if possible
+  if (i === 0 && this.length <= 1) return this;
+
+  if (i < 0) i = this.length + i;
+  return this[i] ? this._make(this[i]) : this._make([]);
+};
+
+// Retrieve the DOM elements matched by the jQuery object.
+exports.get = function(i) {
+  if (i == null) {
+    return Array.prototype.slice.call(this);
+  } else {
+    return this[i < 0 ? (this.length + i) : i];
+  }
+};
+
+// Search for a given element from among the matched elements.
+exports.index = function(selectorOrNeedle) {
+  var $haystack, needle;
+
+  if (arguments.length === 0) {
+    $haystack = this.parent().children();
+    needle = this[0];
+  } else if (typeof selectorOrNeedle === 'string') {
+    $haystack = this._make(selectorOrNeedle);
+    needle = this[0];
+  } else {
+    $haystack = this;
+    needle = selectorOrNeedle.cheerio ? selectorOrNeedle[0] : selectorOrNeedle;
+  }
+
+  return $haystack.get().indexOf(needle);
+};
+
+exports.slice = function() {
+  return this._make([].slice.apply(this, arguments));
+};
+
+function traverseParents(self, elem, selector, limit) {
+  var elems = [];
+  while (elem && elems.length < limit) {
+    if (!selector || exports.filter.call([elem], selector, self).length) {
+      elems.push(elem);
+    }
+    elem = elem.parent;
+  }
+  return elems;
+}
+
+// End the most recent filtering operation in the current chain and return the
+// set of matched elements to its previous state.
+exports.end = function() {
+  return this.prevObject || this._make([]);
+};
+
+exports.add = function(other, context) {
+  var selection = this._make(other, context);
+  var contents = uniqueSort(selection.get().concat(this.get()));
+
+  for (var i = 0; i < contents.length; ++i) {
+    selection[i] = contents[i];
+  }
+  selection.length = contents.length;
+
+  return selection;
+};
+
+// Add the previous set of elements on the stack to the current set, optionally
+// filtered by a selector.
+exports.addBack = function(selector) {
+  return this.add(
+    arguments.length ? this.prevObject.filter(selector) : this.prevObject
+  );
+};
+
+},{"../utils":118,"css-select":70,"htmlparser2":128,"lodash.bind":136,"lodash.filter":139,"lodash.foreach":141,"lodash.reduce":145,"lodash.reject":146}],115:[function(require,module,exports){
+/*
+  Module dependencies
+*/
+
+var parse = require('./parse'),
+    isHtml = require('./utils').isHtml,
+    _ = {
+      extend: require('lodash.assignin'),
+      bind: require('lodash.bind'),
+      forEach: require('lodash.foreach'),
+      defaults: require('lodash.defaults')
+    };
+
+/*
+ * The API
+ */
+
+var api = [
+  require('./api/attributes'),
+  require('./api/traversing'),
+  require('./api/manipulation'),
+  require('./api/css'),
+  require('./api/forms')
+];
+
+/*
+ * Instance of cheerio
+ */
+
+var Cheerio = module.exports = function(selector, context, root, options) {
+  if (!(this instanceof Cheerio)) return new Cheerio(selector, context, root, options);
+
+  this.options = _.defaults(options || {}, this.options);
+
+  // $(), $(null), $(undefined), $(false)
+  if (!selector) return this;
+
+  if (root) {
+    if (typeof root === 'string') root = parse(root, this.options);
+    this._root = Cheerio.call(this, root);
+  }
+
+  // $($)
+  if (selector.cheerio) return selector;
+
+  // $(dom)
+  if (isNode(selector))
+    selector = [selector];
+
+  // $([dom])
+  if (Array.isArray(selector)) {
+    _.forEach(selector, _.bind(function(elem, idx) {
+      this[idx] = elem;
+    }, this));
+    this.length = selector.length;
+    return this;
+  }
+
+  // $(<html>)
+  if (typeof selector === 'string' && isHtml(selector)) {
+    return Cheerio.call(this, parse(selector, this.options).children);
+  }
+
+  // If we don't have a context, maybe we have a root, from loading
+  if (!context) {
+    context = this._root;
+  } else if (typeof context === 'string') {
+    if (isHtml(context)) {
+      // $('li', '<ul>...</ul>')
+      context = parse(context, this.options);
+      context = Cheerio.call(this, context);
+    } else {
+      // $('li', 'ul')
+      selector = [context, selector].join(' ');
+      context = this._root;
+    }
+  // $('li', node), $('li', [nodes])
+  } else if (!context.cheerio) {
+    context = Cheerio.call(this, context);
+  }
+
+  // If we still don't have a context, return
+  if (!context) return this;
+
+  // #id, .class, tag
+  return context.find(selector);
+};
+
+/**
+ * Mix in `static`
+ */
+
+_.extend(Cheerio, require('./static'));
+
+/*
+ * Set a signature of the object
+ */
+
+Cheerio.prototype.cheerio = '[cheerio object]';
+
+/*
+ * Cheerio default options
+ */
+
+Cheerio.prototype.options = {
+  withDomLvl1: true,
+  normalizeWhitespace: false,
+  xmlMode: false,
+  decodeEntities: true
+};
+
+/*
+ * Make cheerio an array-like object
+ */
+
+Cheerio.prototype.length = 0;
+Cheerio.prototype.splice = Array.prototype.splice;
+
+/*
+ * Make a cheerio object
+ *
+ * @api private
+ */
+
+Cheerio.prototype._make = function(dom, context) {
+  var cheerio = new this.constructor(dom, context, this._root, this.options);
+  cheerio.prevObject = this;
+  return cheerio;
+};
+
+/**
+ * Turn a cheerio object into an array
+ */
+
+Cheerio.prototype.toArray = function() {
+  return this.get();
+};
+
+/**
+ * Plug in the API
+ */
+api.forEach(function(mod) {
+  _.extend(Cheerio.prototype, mod);
+});
+
+var isNode = function(obj) {
+  return obj.name || obj.type === 'text' || obj.type === 'comment';
+};
+
+},{"./api/attributes":110,"./api/css":111,"./api/forms":112,"./api/manipulation":113,"./api/traversing":114,"./parse":116,"./static":117,"./utils":118,"lodash.assignin":135,"lodash.bind":136,"lodash.defaults":138,"lodash.foreach":141}],116:[function(require,module,exports){
+(function (Buffer){
+/*
+  Module Dependencies
+*/
+var htmlparser = require('htmlparser2');
+
+/*
+  Parser
+*/
+exports = module.exports = function(content, options) {
+  var dom = exports.evaluate(content, options),
+      // Generic root element
+      root = exports.evaluate('<root></root>', options)[0];
+
+  root.type = 'root';
+
+  // Update the dom using the root
+  exports.update(dom, root);
+
+  return root;
+};
+
+exports.evaluate = function(content, options) {
+  // options = options || $.fn.options;
+
+  var dom;
+
+  if (typeof content === 'string' || Buffer.isBuffer(content)) {
+    dom = htmlparser.parseDOM(content, options);
+  } else {
+    dom = content;
+  }
+
+  return dom;
+};
+
+/*
+  Update the dom structure, for one changed layer
+*/
+exports.update = function(arr, parent) {
+  // normalize
+  if (!Array.isArray(arr)) arr = [arr];
+
+  // Update parent
+  if (parent) {
+    parent.children = arr;
+  } else {
+    parent = null;
+  }
+
+  // Update neighbors
+  for (var i = 0; i < arr.length; i++) {
+    var node = arr[i];
+
+    // Cleanly remove existing nodes from their previous structures.
+    var oldParent = node.parent || node.root,
+        oldSiblings = oldParent && oldParent.children;
+    if (oldSiblings && oldSiblings !== arr) {
+      oldSiblings.splice(oldSiblings.indexOf(node), 1);
+      if (node.prev) {
+        node.prev.next = node.next;
+      }
+      if (node.next) {
+        node.next.prev = node.prev;
+      }
+    }
+
+    if (parent) {
+      node.prev = arr[i - 1] || null;
+      node.next = arr[i + 1] || null;
+    } else {
+      node.prev = node.next = null;
+    }
+
+    if (parent && parent.type === 'root') {
+      node.root = parent;
+      node.parent = null;
+    } else {
+      node.root = null;
+      node.parent = parent;
+    }
+  }
+
+  return parent;
+};
+
+// module.exports = $.extend(exports);
+
+}).call(this,{"isBuffer":require("../../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
+},{"../../../../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":175,"htmlparser2":128}],117:[function(require,module,exports){
+/**
+ * Module dependencies
+ */
+
+var serialize = require('dom-serializer'),
+    select = require('css-select'),
+    parse = require('./parse'),
+    _ = {
+      merge: require('lodash.merge'),
+      defaults: require('lodash.defaults')
+    };
+
+/**
+ * $.load(str)
+ */
+
+exports.load = function(content, options) {
+  var Cheerio = require('./cheerio');
+
+  options = _.defaults(options || {}, Cheerio.prototype.options);
+
+  var root = parse(content, options);
+
+  var initialize = function(selector, context, r, opts) {
+    if (!(this instanceof initialize)) {
+      return new initialize(selector, context, r, opts);
+    }
+    opts = _.defaults(opts || {}, options);
+    return Cheerio.call(this, selector, context, r || root, opts);
+  };
+
+  // Ensure that selections created by the "loaded" `initialize` function are
+  // true Cheerio instances.
+  initialize.prototype = Object.create(Cheerio.prototype);
+  initialize.prototype.constructor = initialize;
+
+  // Mimic jQuery's prototype alias for plugin authors.
+  initialize.fn = initialize.prototype;
+
+  // Keep a reference to the top-level scope so we can chain methods that implicitly
+  // resolve selectors; e.g. $("<span>").(".bar"), which otherwise loses ._root
+  initialize.prototype._originalRoot = root;
+
+  // Add in the static methods
+  _.merge(initialize, exports);
+
+  // Add in the root
+  initialize._root = root;
+  // store options
+  initialize._options = options;
+
+  return initialize;
+};
+
+/*
+* Helper function
+*/
+
+function render(that, dom, options) {
+  if (!dom) {
+    if (that._root && that._root.children) {
+      dom = that._root.children;
+    } else {
+      return '';
+    }
+  } else if (typeof dom === 'string') {
+    dom = select(dom, that._root, options);
+  }
+
+  return serialize(dom, options);
+}
+
+/**
+ * $.html([selector | dom], [options])
+ */
+
+exports.html = function(dom, options) {
+  var Cheerio = require('./cheerio');
+
+  // be flexible about parameters, sometimes we call html(),
+  // with options as only parameter
+  // check dom argument for dom element specific properties
+  // assume there is no 'length' or 'type' properties in the options object
+  if (Object.prototype.toString.call(dom) === '[object Object]' && !options && !('length' in dom) && !('type' in dom))
+  {
+    options = dom;
+    dom = undefined;
+  }
+
+  // sometimes $.html() used without preloading html
+  // so fallback non existing options to the default ones
+  options = _.defaults(options || {}, this._options, Cheerio.prototype.options);
+
+  return render(this, dom, options);
+};
+
+/**
+ * $.xml([selector | dom])
+ */
+
+exports.xml = function(dom) {
+  var options = _.defaults({xmlMode: true}, this._options);
+
+  return render(this, dom, options);
+};
+
+/**
+ * $.text(dom)
+ */
+
+exports.text = function(elems) {
+  if (!elems) {
+    elems = this.root();
+  }
+
+  var ret = '',
+      len = elems.length,
+      elem;
+
+  for (var i = 0; i < len; i++) {
+    elem = elems[i];
+    if (elem.type === 'text') ret += elem.data;
+    else if (elem.children && elem.type !== 'comment') {
+      ret += exports.text(elem.children);
+    }
+  }
+
+  return ret;
+};
+
+/**
+ * $.parseHTML(data [, context ] [, keepScripts ])
+ * Parses a string into an array of DOM nodes. The `context` argument has no
+ * meaning for Cheerio, but it is maintained for API compatibility with jQuery.
+ */
+exports.parseHTML = function(data, context, keepScripts) {
+  var parsed;
+
+  if (!data || typeof data !== 'string') {
+    return null;
+  }
+
+  if (typeof context === 'boolean') {
+    keepScripts = context;
+  }
+
+  parsed = this.load(data);
+  if (!keepScripts) {
+    parsed('script').remove();
+  }
+
+  // The `children` array is used by Cheerio internally to group elements that
+  // share the same parents. When nodes created through `parseHTML` are
+  // inserted into previously-existing DOM structures, they will be removed
+  // from the `children` array. The results of `parseHTML` should remain
+  // constant across these operations, so a shallow copy should be returned.
+  return parsed.root()[0].children.slice();
+};
+
+/**
+ * $.root()
+ */
+exports.root = function() {
+  return this(this._root);
+};
+
+/**
+ * $.contains()
+ */
+exports.contains = function(container, contained) {
+
+  // According to the jQuery API, an element does not "contain" itself
+  if (contained === container) {
+    return false;
+  }
+
+  // Step up the descendants, stopping when the root element is reached
+  // (signaled by `.parent` returning a reference to the same object)
+  while (contained && contained !== contained.parent) {
+    contained = contained.parent;
+    if (contained === container) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+},{"./cheerio":115,"./parse":116,"css-select":70,"dom-serializer":82,"lodash.defaults":138,"lodash.merge":143}],118:[function(require,module,exports){
+var parse = require('./parse'),
+    render = require('dom-serializer');
+
+/**
+ * HTML Tags
+ */
+
+var tags = { tag: true, script: true, style: true };
+
+/**
+ * Check if the DOM element is a tag
+ *
+ * isTag(type) includes <script> and <style> tags
+ */
+
+exports.isTag = function(type) {
+  if (type.type) type = type.type;
+  return tags[type] || false;
+};
+
+/**
+ * Convert a string to camel case notation.
+ * @param  {String} str String to be converted.
+ * @return {String}     String in camel case notation.
+ */
+
+exports.camelCase = function(str) {
+  return str.replace(/[_.-](\w|$)/g, function(_, x) {
+    return x.toUpperCase();
+  });
+};
+
+/**
+ * Convert a string from camel case to "CSS case", where word boundaries are
+ * described by hyphens ("-") and all characters are lower-case.
+ * @param  {String} str String to be converted.
+ * @return {string}     String in "CSS case".
+ */
+exports.cssCase = function(str) {
+  return str.replace(/[A-Z]/g, '-$&').toLowerCase();
+};
+
+/**
+ * Iterate over each DOM element without creating intermediary Cheerio instances.
+ *
+ * This is indented for use internally to avoid otherwise unnecessary memory pressure introduced
+ * by _make.
+ */
+
+exports.domEach = function(cheerio, fn) {
+  var i = 0, len = cheerio.length;
+  while (i < len && fn.call(cheerio, i, cheerio[i]) !== false) ++i;
+  return cheerio;
+};
+
+/**
+ * Create a deep copy of the given DOM structure by first rendering it to a
+ * string and then parsing the resultant markup.
+ *
+ * @argument {Object} dom - The htmlparser2-compliant DOM structure
+ * @argument {Object} options - The parsing/rendering options
+ */
+exports.cloneDom = function(dom, options) {
+  return parse(render(dom, options), options).children;
+};
+
+/*
+ * A simple way to check for HTML strings or ID strings
+ */
+
+var quickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*$|#([\w\-]*)$)/;
+
+/*
+ * Check if string is HTML
+ */
+exports.isHtml = function(str) {
+  // Faster than running regex, if str starts with `<` and ends with `>`, assume it's HTML
+  if (str.charAt(0) === '<' && str.charAt(str.length - 1) === '>' && str.length >= 3) return true;
+
+  // Run the regex
+  var match = quickExpr.exec(str);
+  return !!(match && match[1]);
+};
+
+},{"./parse":116,"dom-serializer":82}],119:[function(require,module,exports){
+module.exports={
+  "_from": "cheerio@^0.22.0",
+  "_id": "cheerio@0.22.0",
+  "_inBundle": false,
+  "_integrity": "sha1-qbqoYKP5tZWmuBsahocxIe06Jp4=",
+  "_location": "/get-svg-colors/cheerio",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "range",
+    "registry": true,
+    "raw": "cheerio@^0.22.0",
+    "name": "cheerio",
+    "escapedName": "cheerio",
+    "rawSpec": "^0.22.0",
+    "saveSpec": null,
+    "fetchSpec": "^0.22.0"
+  },
+  "_requiredBy": [
+    "/get-svg-colors"
+  ],
+  "_resolved": "https://registry.npmjs.org/cheerio/-/cheerio-0.22.0.tgz",
+  "_shasum": "a9baa860a3f9b595a6b81b1a86873121ed3a269e",
+  "_spec": "cheerio@^0.22.0",
+  "_where": "/Users/annie/Desktop/kamelette/node_modules/get-svg-colors",
+  "author": {
+    "name": "Matt Mueller",
+    "email": "mattmuelle@gmail.com",
+    "url": "mat.io"
+  },
+  "bugs": {
+    "url": "https://github.com/cheeriojs/cheerio/issues"
+  },
+  "bundleDependencies": false,
+  "dependencies": {
+    "css-select": "~1.2.0",
+    "dom-serializer": "~0.1.0",
+    "entities": "~1.1.1",
+    "htmlparser2": "^3.9.1",
+    "lodash.assignin": "^4.0.9",
+    "lodash.bind": "^4.1.4",
+    "lodash.defaults": "^4.0.1",
+    "lodash.filter": "^4.4.0",
+    "lodash.flatten": "^4.2.0",
+    "lodash.foreach": "^4.3.0",
+    "lodash.map": "^4.4.0",
+    "lodash.merge": "^4.4.0",
+    "lodash.pick": "^4.2.1",
+    "lodash.reduce": "^4.4.0",
+    "lodash.reject": "^4.4.0",
+    "lodash.some": "^4.4.0"
+  },
+  "deprecated": false,
+  "description": "Tiny, fast, and elegant implementation of core jQuery designed specifically for the server",
+  "devDependencies": {
+    "benchmark": "^2.1.0",
+    "coveralls": "^2.11.9",
+    "expect.js": "~0.3.1",
+    "istanbul": "^0.4.3",
+    "jquery": "^3.0.0",
+    "jsdom": "^9.2.1",
+    "jshint": "^2.9.2",
+    "mocha": "^2.5.3",
+    "xyz": "~0.5.0"
+  },
+  "engines": {
+    "node": ">= 0.6"
+  },
+  "files": [
+    "index.js",
+    "lib"
+  ],
+  "homepage": "https://github.com/cheeriojs/cheerio#readme",
+  "keywords": [
+    "htmlparser",
+    "jquery",
+    "selector",
+    "scraper",
+    "parser",
+    "html"
+  ],
+  "license": "MIT",
+  "main": "./index.js",
+  "name": "cheerio",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/cheeriojs/cheerio.git"
+  },
+  "scripts": {
+    "test": "make test"
+  },
+  "version": "0.22.0"
+}
+
+},{}],120:[function(require,module,exports){
 'use strict';
 module.exports = /<!--([\s\S]*?)-->/g;
 
@@ -49888,7 +49968,7 @@ FeedHandler.prototype.onend = function() {
 
 module.exports = FeedHandler;
 
-},{"domhandler":95,"domutils":98,"inherits":129}],123:[function(require,module,exports){
+},{"domhandler":84,"domutils":87,"inherits":129}],123:[function(require,module,exports){
 var Tokenizer = require("./Tokenizer.js");
 
 /*
@@ -50272,7 +50352,7 @@ Parser.prototype.done = Parser.prototype.end;
 
 module.exports = Parser;
 
-},{"./Tokenizer.js":126,"events":171,"inherits":129}],124:[function(require,module,exports){
+},{"./Tokenizer.js":126,"events":172,"inherits":129}],124:[function(require,module,exports){
 module.exports = ProxyHandler;
 
 function ProxyHandler(cbs) {
@@ -51310,7 +51390,7 @@ Tokenizer.prototype._emitPartial = function(value) {
     }
 };
 
-},{"entities/lib/decode_codepoint.js":108,"entities/maps/entities.json":111,"entities/maps/legacy.json":112,"entities/maps/xml.json":113}],127:[function(require,module,exports){
+},{"entities/lib/decode_codepoint.js":97,"entities/maps/entities.json":100,"entities/maps/legacy.json":101,"entities/maps/xml.json":102}],127:[function(require,module,exports){
 module.exports = Stream;
 
 var Parser = require("./Parser.js");
@@ -51337,7 +51417,7 @@ Stream.prototype._write = function(chunk, encoding, cb) {
     cb();
 };
 
-},{"./Parser.js":123,"buffer":169,"inherits":129,"readable-stream":168,"string_decoder":200}],128:[function(require,module,exports){
+},{"./Parser.js":123,"buffer":170,"inherits":129,"readable-stream":169,"string_decoder":201}],128:[function(require,module,exports){
 var Parser = require("./Parser.js");
 var DomHandler = require("domhandler");
 
@@ -51411,7 +51491,7 @@ module.exports = {
     }
 };
 
-},{"./CollectingHandler.js":121,"./FeedHandler.js":122,"./Parser.js":123,"./ProxyHandler.js":124,"./Stream.js":125,"./Tokenizer.js":126,"./WritableStream.js":127,"domelementtype":94,"domhandler":95,"domutils":98}],129:[function(require,module,exports){
+},{"./CollectingHandler.js":121,"./FeedHandler.js":122,"./Parser.js":123,"./ProxyHandler.js":124,"./Stream.js":125,"./Tokenizer.js":126,"./WritableStream.js":127,"domelementtype":83,"domhandler":84,"domutils":87}],129:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -51495,7 +51575,7 @@ const regex = /^\s*(?:<\?xml[^>]*>\s*)?(?:<!doctype svg[^>]*\s*(?:\[?(?:\s*<![^>
 module.exports = input => Boolean(input) && !isBinary(input) && regex.test(input.toString().replace(htmlCommentRegex, ''));
 
 }).call(this,{"isBuffer":require("../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js")})
-},{"../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":174,"html-comment-regex":120}],133:[function(require,module,exports){
+},{"../../../../../../usr/local/lib/node_modules/browserify/node_modules/is-buffer/index.js":175,"html-comment-regex":120}],133:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -70622,7 +70702,7 @@ module.exports = function convert(arr, result) {
 },{"./doConvert.js":151,"ndarray":152}],151:[function(require,module,exports){
 module.exports=require('cwise-compiler')({"args":["array","scalar","index"],"pre":{"body":"{}","args":[],"thisVars":[],"localVars":[]},"body":{"body":"{\nvar _inline_1_v=_inline_1_arg1_,_inline_1_i\nfor(_inline_1_i=0;_inline_1_i<_inline_1_arg2_.length-1;++_inline_1_i) {\n_inline_1_v=_inline_1_v[_inline_1_arg2_[_inline_1_i]]\n}\n_inline_1_arg0_=_inline_1_v[_inline_1_arg2_[_inline_1_arg2_.length-1]]\n}","args":[{"name":"_inline_1_arg0_","lvalue":true,"rvalue":false,"count":1},{"name":"_inline_1_arg1_","lvalue":false,"rvalue":true,"count":1},{"name":"_inline_1_arg2_","lvalue":false,"rvalue":true,"count":4}],"thisVars":[],"localVars":["_inline_1_i","_inline_1_v"]},"post":{"body":"{}","args":[],"thisVars":[],"localVars":[]},"funcName":"convert","blockSize":64})
 
-},{"cwise-compiler":89}],152:[function(require,module,exports){
+},{"cwise-compiler":78}],152:[function(require,module,exports){
 var iota = require("iota-array")
 var isBuffer = require("is-buffer")
 
@@ -73949,6 +74029,9 @@ exports.useDeprecated = useDeprecated;
 
 
 },{"@pixi/accessibility":2,"@pixi/app":3,"@pixi/constants":4,"@pixi/core":5,"@pixi/display":6,"@pixi/extract":7,"@pixi/filter-alpha":10,"@pixi/filter-blur":14,"@pixi/filter-color-matrix":17,"@pixi/filter-displacement":23,"@pixi/filter-fxaa":27,"@pixi/filter-noise":34,"@pixi/graphics":46,"@pixi/interaction":47,"@pixi/loaders":48,"@pixi/math":49,"@pixi/mesh":51,"@pixi/mesh-extras":50,"@pixi/mixin-cache-as-bitmap":52,"@pixi/mixin-get-child-by-name":53,"@pixi/mixin-get-global-position":54,"@pixi/particles":55,"@pixi/polyfill":56,"@pixi/prepare":57,"@pixi/runner":58,"@pixi/settings":59,"@pixi/sprite":62,"@pixi/sprite-animated":60,"@pixi/sprite-tiling":61,"@pixi/spritesheet":63,"@pixi/text":65,"@pixi/text-bitmap":64,"@pixi/ticker":66,"@pixi/utils":67}],162:[function(require,module,exports){
+/*!Please JS v0.4.2, Jordan Checkman 2014, Checkman.io, MIT License, Have fun.*/
+!function(e,r,a){"function"==typeof define&&define.amd?define([],a):"object"==typeof exports?module.exports=a():r[e]=a()}("Please",this,function(){"use strict";function e(){function e(e,r,a){var o=Math.random;return a instanceof l&&(o=a.random),Math.floor(o()*(r-e+1))+e}function r(e,r,a){var o=Math.random;return a instanceof l&&(o=a.random),o()*(r-e)+e}function a(e,r,a){return Math.max(r,Math.min(e,a))}function o(e,r){var a;switch(e){case"hex":for(a=0;a<r.length;a++)r[a]=F.HSV_to_HEX(r[a]);break;case"rgb":for(a=0;a<r.length;a++)r[a]=F.HSV_to_RGB(r[a]);break;case"rgb-string":for(a=0;a<r.length;a++){var o=F.HSV_to_RGB(r[a]);r[a]="rgb("+o.r+","+o.g+","+o.b+")"}break;case"hsv":break;default:console.error("Format not recognized.")}return r}function n(e){var r=F.HSV_to_RGB(e),a=(299*r.r+587*r.g+114*r.b)/1e3;return a>=128?"dark":"light"}function t(e){var r={};for(var a in e)e.hasOwnProperty(a)&&(r[a]=e[a]);return r}function l(e){function r(){o=(o+1)%256,n=(n+a[o])%256;var e=a[o];return a[o]=a[n],a[n]=e,a[(a[o]+a[n])%256]}for(var a=[],o=0,n=0,t=0;256>t;t++)a[t]=t;for(var l=0,F=0;256>l;l++){F=(F+a[l]+e.charCodeAt(l%e.length))%256;var s=a[l];a[l]=a[F],a[F]=s}this.random=function(){for(var e=0,a=0,o=1;8>e;e++)a+=r()*o,o*=256;return a/0x10000000000000000}}var F={},s={aliceblue:"F0F8FF",antiquewhite:"FAEBD7",aqua:"00FFFF",aquamarine:"7FFFD4",azure:"F0FFFF",beige:"F5F5DC",bisque:"FFE4C4",black:"000000",blanchedalmond:"FFEBCD",blue:"0000FF",blueviolet:"8A2BE2",brown:"A52A2A",burlywood:"DEB887",cadetblue:"5F9EA0",chartreuse:"7FFF00",chocolate:"D2691E",coral:"FF7F50",cornflowerblue:"6495ED",cornsilk:"FFF8DC",crimson:"DC143C",cyan:"00FFFF",darkblue:"00008B",darkcyan:"008B8B",darkgoldenrod:"B8860B",darkgray:"A9A9A9",darkgrey:"A9A9A9",darkgreen:"006400",darkkhaki:"BDB76B",darkmagenta:"8B008B",darkolivegreen:"556B2F",darkorange:"FF8C00",darkorchid:"9932CC",darkred:"8B0000",darksalmon:"E9967A",darkseagreen:"8FBC8F",darkslateblue:"483D8B",darkslategray:"2F4F4F",darkslategrey:"2F4F4F",darkturquoise:"00CED1",darkviolet:"9400D3",deeppink:"FF1493",deepskyblue:"00BFFF",dimgray:"696969",dimgrey:"696969",dodgerblue:"1E90FF",firebrick:"B22222",floralwhite:"FFFAF0",forestgreen:"228B22",fuchsia:"FF00FF",gainsboro:"DCDCDC",ghostwhite:"F8F8FF",gold:"FFD700",goldenrod:"DAA520",gray:"808080",grey:"808080",green:"008000",greenyellow:"ADFF2F",honeydew:"F0FFF0",hotpink:"FF69B4",indianred:"CD5C5C",indigo:"4B0082",ivory:"FFFFF0",khaki:"F0E68C",lavender:"E6E6FA",lavenderblush:"FFF0F5",lawngreen:"7CFC00",lemonchiffon:"FFFACD",lightblue:"ADD8E6",lightcoral:"F08080",lightcyan:"E0FFFF",lightgoldenrodyellow:"FAFAD2",lightgray:"D3D3D3",lightgrey:"D3D3D3",lightgreen:"90EE90",lightpink:"FFB6C1",lightsalmon:"FFA07A",lightseagreen:"20B2AA",lightskyblue:"87CEFA",lightslategray:"778899",lightslategrey:"778899",lightsteelblue:"B0C4DE",lightyellow:"FFFFE0",lime:"00FF00",limegreen:"32CD32",linen:"FAF0E6",magenta:"FF00FF",maroon:"800000",mediumaquamarine:"66CDAA",mediumblue:"0000CD",mediumorchid:"BA55D3",mediumpurple:"9370D8",mediumseagreen:"3CB371",mediumslateblue:"7B68EE",mediumspringgreen:"00FA9A",mediumturquoise:"48D1CC",mediumvioletred:"C71585",midnightblue:"191970",mintcream:"F5FFFA",mistyrose:"FFE4E1",moccasin:"FFE4B5",navajowhite:"FFDEAD",navy:"000080",oldlace:"FDF5E6",olive:"808000",olivedrab:"6B8E23",orange:"FFA500",orangered:"FF4500",orchid:"DA70D6",palegoldenrod:"EEE8AA",palegreen:"98FB98",paleturquoise:"AFEEEE",palevioletred:"D87093",papayawhip:"FFEFD5",peachpuff:"FFDAB9",peru:"CD853F",pink:"FFC0CB",plum:"DDA0DD",powderblue:"B0E0E6",purple:"800080",rebeccapurple:"663399",red:"FF0000",rosybrown:"BC8F8F",royalblue:"4169E1",saddlebrown:"8B4513",salmon:"FA8072",sandybrown:"F4A460",seagreen:"2E8B57",seashell:"FFF5EE",sienna:"A0522D",silver:"C0C0C0",skyblue:"87CEEB",slateblue:"6A5ACD",slategray:"708090",slategrey:"708090",snow:"FFFAFA",springgreen:"00FF7F",steelblue:"4682B4",tan:"D2B48C",teal:"008080",thistle:"D8BFD8",tomato:"FF6347",turquoise:"40E0D0",violet:"EE82EE",wheat:"F5DEB3",white:"FFFFFF",whitesmoke:"F5F5F5",yellow:"FFFF00",yellowgreen:"9ACD32"},i=.618033988749895,u={hue:null,saturation:null,value:null,base_color:"",greyscale:!1,grayscale:!1,golden:!0,full_random:!1,colors_returned:1,format:"hex",seed:null},c={scheme_type:"analogous",format:"hex"},h={golden:!1,format:"hex"};return F.NAME_to_HEX=function(e){return e=e.toLowerCase(),e in s?s[e]:(console.error("Color name not recognized."),void 0)},F.NAME_to_RGB=function(e){return F.HEX_to_RGB(F.NAME_to_HEX(e))},F.NAME_to_HSV=function(e){return F.HEX_to_HSV(F.NAME_to_HEX(e))},F.HEX_to_RGB=function(e){var r=/^#?([a-f\d])([a-f\d])([a-f\d])$/i;e=e.replace(r,function(e,r,a,o){return r+r+a+a+o+o});var a=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(e);return a?{r:parseInt(a[1],16),g:parseInt(a[2],16),b:parseInt(a[3],16)}:null},F.RGB_to_HEX=function(e){return"#"+((1<<24)+(e.r<<16)+(e.g<<8)+e.b).toString(16).slice(1)},F.HSV_to_RGB=function(e){var r,a,o,n,t,l,F,s,i=e.h,u=e.s,c=e.v;if(0===u)return{r:c,g:c,b:c};switch(i/=60,n=Math.floor(i),t=i-n,l=c*(1-u),F=c*(1-u*t),s=c*(1-u*(1-t)),n){case 0:r=c,a=s,o=l;break;case 1:r=F,a=c,o=l;break;case 2:r=l,a=c,o=s;break;case 3:r=l,a=F,o=c;break;case 4:r=s,a=l,o=c;break;case 5:r=c,a=l,o=F}return{r:Math.floor(255*r),g:Math.floor(255*a),b:Math.floor(255*o)}},F.RGB_to_HSV=function(e){var r=e.r/255,a=e.g/255,o=e.b/255,n=0,t=0,l=0,F=Math.min(r,Math.min(a,o)),s=Math.max(r,Math.max(a,o));if(F===s)return l=F,{h:0,s:0,v:l};var i=r===F?a-o:o===F?r-a:o-r,u=r===F?3:o===F?1:5;return n=60*(u-i/(s-F)),t=(s-F)/s,l=s,{h:n,s:t,v:l}},F.HSV_to_HEX=function(e){return F.RGB_to_HEX(F.HSV_to_RGB(e))},F.HEX_to_HSV=function(e){return F.RGB_to_HSV(F.HEX_to_RGB(e))},F.make_scheme=function(e,r){function n(e){return{h:e.h,s:e.s,v:e.v}}var l,F,s,i,u,h=t(c);if(null!==r)for(var d in r)r.hasOwnProperty(d)&&(h[d]=r[d]);var g=[e];switch(h.scheme_type.toLowerCase()){case"monochromatic":case"mono":for(u=1;2>=u;u++)l=n(e),s=l.s+.1*u,s=a(s,0,1),i=l.v+.1*u,i=a(i,0,1),l.s=s,l.v=i,g.push(l);for(u=1;2>=u;u++)l=n(e),s=l.s-.1*u,s=a(s,0,1),i=l.v-.1*u,i=a(i,0,1),l.s=s,l.v=i,g.push(l);break;case"complementary":case"complement":case"comp":l=n(e),l.h=(l.h+180)%360,g.push(l);break;case"split-complementary":case"split-complement":case"split":l=n(e),l.h=(l.h+165)%360,g.push(l),l=n(e),l.h=Math.abs((l.h-165)%360),g.push(l);break;case"double-complementary":case"double-complement":case"double":l=n(e),l.h=(l.h+180)%360,g.push(l),l.h=(l.h+30)%360,F=n(l),g.push(l),l.h=(l.h+180)%360,g.push(F);break;case"analogous":case"ana":for(u=1;5>=u;u++)l=n(e),l.h=(l.h+20*u)%360,g.push(l);break;case"triadic":case"triad":case"tri":for(u=1;3>u;u++)l=n(e),l.h=(l.h+120*u)%360,g.push(l);break;default:console.error("Color scheme not recognized.")}return o(h.format.toLowerCase(),g),g},F.make_color=function(n){var s=[],c=t(u),h=null;if(null!==n)for(var d in n)n.hasOwnProperty(d)&&(c[d]=n[d]);var g=null;"string"==typeof c.seed&&(g=new l(c.seed)),c.base_color.length>0&&(h=c.base_color.match(/^#?([0-9a-f]{3})([0-9a-f]{3})?$/i)?F.HEX_to_HSV(c.base_color):F.NAME_to_HSV(c.base_color));for(var m=0;m<c.colors_returned;m++){var f,E,b,p=e(0,360,g);null!==h?(f=a(e(h.h-5,h.h+5,g),0,360),E=0===h.s?0:r(.4,.85,g),b=r(.4,.85,g),s.push({h:f,s:E,v:b})):(f=c.greyscale===!0||c.grayscale===!0?0:c.golden===!0?(p+p/i)%360:null===c.hue||c.full_random===!0?p:a(c.hue,0,360),E=c.greyscale===!0||c.grayscale===!0?0:c.full_random===!0?r(0,1,g):null===c.saturation?.4:a(c.saturation,0,1),b=c.full_random===!0?r(0,1,g):c.greyscale===!0||c.grayscale===!0?r(.15,.75,g):null===c.value?.75:a(c.value,0,1),s.push({h:f,s:E,v:b}))}return o(c.format.toLowerCase(),s),s},F.make_contrast=function(e,r){var l=t(h);if(null!==r)for(var s in r)r.hasOwnProperty(s)&&(l[s]=r[s]);var u,c,d=n(e);if(l.golden===!0)c=e.h*(1+i)%360;else{var g=F.make_scheme(e,{scheme_type:"complementary",format:"hsv"})[1];c=a(g.h-30,0,360)}var m;return"dark"===d?m=a(e.v-.25,0,1):"light"===d&&(m=a(e.v+.25,0,1)),u=[{h:c,s:e.s,v:m}],o(l.format.toLowerCase(),u),u[0]},F}return e()});
+},{}],163:[function(require,module,exports){
 /*
  * quantize.js Copyright 2008 Nick Rabinowitz
  * Ported to node.js by Olivier Lesnicki
@@ -74440,7 +74523,7 @@ var MMCQ = (function() {
 
 module.exports = MMCQ.quantize
 
-},{}],163:[function(require,module,exports){
+},{}],164:[function(require,module,exports){
 /*!
  * resource-loader - v3.0.1
  * https://github.com/pixijs/pixi-sound
@@ -76791,7 +76874,7 @@ exports.encodeBinary = encodeBinary;
 exports.middleware = index;
 
 
-},{"mini-signals":149,"parse-uri":158}],164:[function(require,module,exports){
+},{"mini-signals":149,"parse-uri":158}],165:[function(require,module,exports){
 (function (process){
 var Stream = require('stream')
 
@@ -76903,7 +76986,7 @@ function through (write, end, opts) {
 
 
 }).call(this,require('_process'))
-},{"_process":178,"stream":199}],165:[function(require,module,exports){
+},{"_process":179,"stream":200}],166:[function(require,module,exports){
 "use strict"
 
 function unique_pred(list, compare) {
@@ -76962,9 +77045,9 @@ function unique(list, compare, sorted) {
 
 module.exports = unique
 
-},{}],166:[function(require,module,exports){
-
 },{}],167:[function(require,module,exports){
+
+},{}],168:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -77118,9 +77201,9 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],168:[function(require,module,exports){
-arguments[4][166][0].apply(exports,arguments)
-},{"dup":166}],169:[function(require,module,exports){
+},{}],169:[function(require,module,exports){
+arguments[4][167][0].apply(exports,arguments)
+},{"dup":167}],170:[function(require,module,exports){
 (function (Buffer){
 /*!
  * The buffer module from node.js, for the browser.
@@ -78901,7 +78984,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"base64-js":167,"buffer":169,"ieee754":172}],170:[function(require,module,exports){
+},{"base64-js":168,"buffer":170,"ieee754":173}],171:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -79012,7 +79095,7 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":174}],171:[function(require,module,exports){
+},{"../../is-buffer/index.js":175}],172:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -79537,7 +79620,7 @@ function functionBindPolyfill(context) {
   };
 }
 
-},{}],172:[function(require,module,exports){
+},{}],173:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = (nBytes * 8) - mLen - 1
@@ -79623,7 +79706,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],173:[function(require,module,exports){
+},{}],174:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -79652,16 +79735,16 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],174:[function(require,module,exports){
+},{}],175:[function(require,module,exports){
 arguments[4][131][0].apply(exports,arguments)
-},{"dup":131}],175:[function(require,module,exports){
+},{"dup":131}],176:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],176:[function(require,module,exports){
+},{}],177:[function(require,module,exports){
 (function (process){
 // .dirname, .basename, and .extname methods are extracted from Node.js v8.11.1,
 // backported and transplited with Babel, with backwards-compat fixes
@@ -79967,7 +80050,7 @@ var substr = 'ab'.substr(-1) === 'b'
 ;
 
 }).call(this,require('_process'))
-},{"_process":178}],177:[function(require,module,exports){
+},{"_process":179}],178:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -80016,7 +80099,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 
 
 }).call(this,require('_process'))
-},{"_process":178}],178:[function(require,module,exports){
+},{"_process":179}],179:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -80202,7 +80285,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],179:[function(require,module,exports){
+},{}],180:[function(require,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.4.1 by @mathias */
 ;(function(root) {
@@ -80739,7 +80822,7 @@ process.umask = function() { return 0; };
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],180:[function(require,module,exports){
+},{}],181:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -80825,7 +80908,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],181:[function(require,module,exports){
+},{}],182:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -80912,16 +80995,16 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],182:[function(require,module,exports){
+},{}],183:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":180,"./encode":181}],183:[function(require,module,exports){
+},{"./decode":181,"./encode":182}],184:[function(require,module,exports){
 module.exports = require('./lib/_stream_duplex.js');
 
-},{"./lib/_stream_duplex.js":184}],184:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":185}],185:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -81053,7 +81136,7 @@ Duplex.prototype._destroy = function (err, cb) {
 
   pna.nextTick(cb, err);
 };
-},{"./_stream_readable":186,"./_stream_writable":188,"core-util-is":170,"inherits":173,"process-nextick-args":177}],185:[function(require,module,exports){
+},{"./_stream_readable":187,"./_stream_writable":189,"core-util-is":171,"inherits":174,"process-nextick-args":178}],186:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -81101,7 +81184,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":187,"core-util-is":170,"inherits":173}],186:[function(require,module,exports){
+},{"./_stream_transform":188,"core-util-is":171,"inherits":174}],187:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -82123,7 +82206,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":184,"./internal/streams/BufferList":189,"./internal/streams/destroy":190,"./internal/streams/stream":191,"_process":178,"core-util-is":170,"events":171,"inherits":173,"isarray":175,"process-nextick-args":177,"safe-buffer":192,"string_decoder/":193,"util":168}],187:[function(require,module,exports){
+},{"./_stream_duplex":185,"./internal/streams/BufferList":190,"./internal/streams/destroy":191,"./internal/streams/stream":192,"_process":179,"core-util-is":171,"events":172,"inherits":174,"isarray":176,"process-nextick-args":178,"safe-buffer":193,"string_decoder/":194,"util":169}],188:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -82338,7 +82421,7 @@ function done(stream, er, data) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":184,"core-util-is":170,"inherits":173}],188:[function(require,module,exports){
+},{"./_stream_duplex":185,"core-util-is":171,"inherits":174}],189:[function(require,module,exports){
 (function (process,global,setImmediate){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -83028,7 +83111,7 @@ Writable.prototype._destroy = function (err, cb) {
   cb(err);
 };
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"./_stream_duplex":184,"./internal/streams/destroy":190,"./internal/streams/stream":191,"_process":178,"core-util-is":170,"inherits":173,"process-nextick-args":177,"safe-buffer":192,"timers":201,"util-deprecate":204}],189:[function(require,module,exports){
+},{"./_stream_duplex":185,"./internal/streams/destroy":191,"./internal/streams/stream":192,"_process":179,"core-util-is":171,"inherits":174,"process-nextick-args":178,"safe-buffer":193,"timers":202,"util-deprecate":205}],190:[function(require,module,exports){
 'use strict';
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -83108,7 +83191,7 @@ if (util && util.inspect && util.inspect.custom) {
     return this.constructor.name + ' ' + obj;
   };
 }
-},{"safe-buffer":192,"util":168}],190:[function(require,module,exports){
+},{"safe-buffer":193,"util":169}],191:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -83183,10 +83266,10 @@ module.exports = {
   destroy: destroy,
   undestroy: undestroy
 };
-},{"process-nextick-args":177}],191:[function(require,module,exports){
+},{"process-nextick-args":178}],192:[function(require,module,exports){
 module.exports = require('events').EventEmitter;
 
-},{"events":171}],192:[function(require,module,exports){
+},{"events":172}],193:[function(require,module,exports){
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
 var Buffer = buffer.Buffer
@@ -83250,7 +83333,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":169}],193:[function(require,module,exports){
+},{"buffer":170}],194:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -83547,10 +83630,10 @@ function simpleWrite(buf) {
 function simpleEnd(buf) {
   return buf && buf.length ? this.write(buf) : '';
 }
-},{"safe-buffer":192}],194:[function(require,module,exports){
+},{"safe-buffer":193}],195:[function(require,module,exports){
 module.exports = require('./readable').PassThrough
 
-},{"./readable":195}],195:[function(require,module,exports){
+},{"./readable":196}],196:[function(require,module,exports){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = exports;
 exports.Readable = exports;
@@ -83559,13 +83642,13 @@ exports.Duplex = require('./lib/_stream_duplex.js');
 exports.Transform = require('./lib/_stream_transform.js');
 exports.PassThrough = require('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":184,"./lib/_stream_passthrough.js":185,"./lib/_stream_readable.js":186,"./lib/_stream_transform.js":187,"./lib/_stream_writable.js":188}],196:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":185,"./lib/_stream_passthrough.js":186,"./lib/_stream_readable.js":187,"./lib/_stream_transform.js":188,"./lib/_stream_writable.js":189}],197:[function(require,module,exports){
 module.exports = require('./readable').Transform
 
-},{"./readable":195}],197:[function(require,module,exports){
+},{"./readable":196}],198:[function(require,module,exports){
 module.exports = require('./lib/_stream_writable.js');
 
-},{"./lib/_stream_writable.js":188}],198:[function(require,module,exports){
+},{"./lib/_stream_writable.js":189}],199:[function(require,module,exports){
 /*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> */
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
@@ -83632,7 +83715,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":169}],199:[function(require,module,exports){
+},{"buffer":170}],200:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -83761,9 +83844,9 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":171,"inherits":173,"readable-stream/duplex.js":183,"readable-stream/passthrough.js":194,"readable-stream/readable.js":195,"readable-stream/transform.js":196,"readable-stream/writable.js":197}],200:[function(require,module,exports){
-arguments[4][193][0].apply(exports,arguments)
-},{"dup":193,"safe-buffer":198}],201:[function(require,module,exports){
+},{"events":172,"inherits":174,"readable-stream/duplex.js":184,"readable-stream/passthrough.js":195,"readable-stream/readable.js":196,"readable-stream/transform.js":197,"readable-stream/writable.js":198}],201:[function(require,module,exports){
+arguments[4][194][0].apply(exports,arguments)
+},{"dup":194,"safe-buffer":199}],202:[function(require,module,exports){
 (function (setImmediate,clearImmediate){
 var nextTick = require('process/browser.js').nextTick;
 var apply = Function.prototype.apply;
@@ -83842,7 +83925,7 @@ exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate :
   delete immediateIds[id];
 };
 }).call(this,require("timers").setImmediate,require("timers").clearImmediate)
-},{"process/browser.js":178,"timers":201}],202:[function(require,module,exports){
+},{"process/browser.js":179,"timers":202}],203:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -84576,7 +84659,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":203,"punycode":179,"querystring":182}],203:[function(require,module,exports){
+},{"./util":204,"punycode":180,"querystring":183}],204:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -84594,7 +84677,7 @@ module.exports = {
   }
 };
 
-},{}],204:[function(require,module,exports){
+},{}],205:[function(require,module,exports){
 (function (global){
 
 /**

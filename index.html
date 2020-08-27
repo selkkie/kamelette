@@ -21,17 +21,15 @@
     <div id="canvas"></div>
     <div class="row" id="colors"><input class="blot" type="color"></div>
     <div class="row flexrow">
-        <div class="flexme"> <input id="tolerance" step=".1" value=".2" min="0" max="1" class="slider" type="range"><br> <label for="tolerance" id="tolerancelabel">Tolerance: .2</label></div><button onclick="reset()" class="btn fabtn"><i class="demo-icon icon-fast-backward"></i></button><button onclick="recolorize()" class="btn rainbow-bg" id="recolorize">Recolorize!</button><button onclick="reset()" class="btn fabtn disabled"><i class="demo-icon icon-cw"></i></button>
-        <div class="flexme"> <input id="nocol" onchange="numberChange()" value="5" type="number"><br> <label for="nocol">Palette Size</label></div>
+        <div class="flexme"> <input id="tolerance" step=".1" value=".2" min="0" max="1" class="slider" type="range"><br> <label for="tolerance" id="tolerancelabel">Tolerance: .2</label></div><button onclick="reset()" class="btn fabtn"><i class="demo-icon icon-fast-backward"></i></button><button onclick="recolorize()" class="btn rainbow-bg" id="recolorize">Recolorize!</button><button onclick="shiftcols()" class="btn fabtn "><i class="demo-icon icon-cw"></i></button>
+        <div class="flexme"> <input id="nocol" onchange="numberChange()" value="3" type="number"><br> <label for="nocol">Palette Size</label></div>
     </div>
     <script src="bundle.js"></script>
 
     <script>
         var slider = document.getElementById("tolerance");
         var output = document.getElementById("tolerancelabel");
-        output.innerHTML = "Tolerance: <div class='crayon'>" + slider.value + "</div>"; // Display the default slider value
-
-        // Update the current slider value (each time you drag the slider handle)
+        output.innerHTML = "Tolerance: <div class='crayon'>" + slider.value + "</div>"; 
         slider.oninput = function() {
             output.innerHTML = "Tolerance: <div class='crayon'>" + this.value + "</div>";
         }
